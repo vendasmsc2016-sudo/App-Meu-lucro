@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV Pro - Duque de Caxias</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-green: #2e7d32;
+            --light-green: #4caf50;
+            --bg-gray: #f5f5f5;
+            --white: #ffffff;
+            --text-dark: #333;
+            --text-gray: #757575;
+            --border-color: #ddd;
+            --danger: #d32f2f;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-gray); color: var(--text-dark); padding-bottom: 80px; }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--white); z-index: 2000; display: none;
+            flex-direction: column; align-items: center; justify-content: center; padding: 30px;
+        }
+
+        .input-group { width: 100%; margin-bottom: 15px; position: relative; }
+        label { display: block; font-size: 11px; color: var(--text-gray); margin: 0 0 5px 5px; font-weight: bold; }
+        input, select {
+            width: 100%; padding: 14px; border: 1px solid var(--border-color);
+            border-radius: 8px; font-size: 16px; outline: none; background: white;
+        }
+
+        button.btn-main {
+            width: 100%; padding: 15px; background: var(--light-green);
+            color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;
+        }
+        button.btn-outline {
+            background: transparent; border: 1px solid var(--light-green); color: var(--light-green);
+            margin-top: 10px; width: 100%; padding: 10px; border-radius: 8px; font-weight: bold;
+        }
+
+        header {
+            background: var(--white); padding: 15px; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10;
+        }
+
+        .card { background: var(--white); margin: 15px; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .foto-placeholder {
+            width: 100%; height: 150px; background: #eee; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin-bottom: 15px; overflow: hidden; border: 2px dashed #ccc; position: relative;
+        }
+        .foto-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+        #file-input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        .search-results {
+            position: absolute; width: 100%; background: white; border: 1px solid var(--border-color);
+            z-index: 20; max-height: 200px; overflow-y: auto; border-radius: 0 0 8px 8px;
+        }
+        .search-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+
+        .history-item, .stock-item { 
+            border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center;
+        }
+        .history-date { font-size: 11px; color: var(--text-gray); }
+
+        nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid var(--border-color); z-index: 100; }
+        .nav-item { text-align: center; color: var(--text-gray); font-size: 11px; cursor: pointer; flex: 1; }
+        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+        .nav-item.active { color: var(--light-green); }
+
+        .lucro-tag { color: var(--primary-green); font-weight: bold; background: #e8f5e9; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center; }
+        .row { display: flex; gap: 10px; }
+        .row div { flex: 1; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <i class="fas fa-store" style="font-size: 50px; color: var(--light-green); margin-bottom: 20px;"></i>
+        <h2>PDV Pro</h2>
+        <div class="input-group"><input type="email" id="login-email" placeholder="E-mail" value="admin@admin.com"></div>
+        <div class="input-group"><input type="password" id="login-pass" placeholder="Senha" value="1234"></div>
+        <button class="btn-main" onclick="realizarLogin()">Entrar</button>
+    </div>
+
+    <div id="home-screen" class="screen active">
+        <header>
+            <strong>Painel Geral</strong>
+            <i class="fas fa-sign-out-alt" onclick="logout()" style="color: var(--text-gray);"></i>
+        </header>
+        <div class="card" style="background: linear-gradient(135deg, #2e7d32, #4caf50); color: white;">
+            <span style="opacity: 0.9;">Lucro de Hoje</span>
+            <div style="font-size: 32px; font-weight: bold; margin: 5px 0;" id="lucro-hoje">R$ 0,00</div>
+            <hr style="opacity: 0.3; margin: 10px 0;">
+            <div style="font-size: 14px;">
+                Faturamento Total: <span id="fat-total-home">R$ 0,00</span><br>
+                Lucro Total Acumulado: <span id="lucro-total-home">R$ 0,00</span>
+            </div>
+        </div>
+        <div style="padding: 15px; display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn-main" onclick="abrirNovaVenda()">+ NOVA VENDA</button>
+            <button class="btn-outline" onclick="abrirCadastro()">CADASTRAR PRODUTO</button>
+        </div>
+    </div>
+
+    <div id="product-screen" class="screen">
+        <header><i class="fas fa-arrow-left" onclick="showScreen('home-screen')"></i> <strong id="prod-title">Cadastrar Produto</strong></header>
+        <div class="card">
+            <div class="foto-placeholder" id="preview-container">
+                <i class="fas fa-camera" id="icon-cam"></i>
+                <img id="img-preview" src="" style="display:none">
+                <input type="file" id="file-input" accept="image/*" onchange="previewFoto(this)">
+            </div>
+            <div class="input-group">
+                <label>NOME DO PRODUTO</label>
+                <input type="text" id="p-nome">
+            </div>
+            <div class="row">
+                <div><label>CUSTO (R$)</label><input type="text" id="p-custo" placeholder="0,00" oninput="formatarMoeda(this)"></div>
+                <div><label>VENDA (R$)</label><input type="text" id="p-venda" placeholder="0,00" oninput="formatarMoeda(this)"></div>
+            </div>
+            <button class="btn-main" style="margin-top:20px" onclick="salvarProduto()">Salvar Produto</button>
+            <button class="btn-outline" style="border-color: #999; color: #999;" onclick="cancelarEdicao()">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="sale-screen" class="screen">
+        <header><i class="fas fa-arrow-left" onclick="showScreen('home-screen')"></i> <strong>Venda</strong></header>
+        <div class="card">
+            <div class="input-group">
+                <label>BUSCAR PRODUTO</label>
+                <input type="text" id="search-input" placeholder="Pesquisar..." oninput="buscarProduto(this.value)">
+                <div id="search-results" class="search-results"></div>
+            </div>
+            <div id="selected-product-info" class="hidden" style="margin-bottom: 15px; border: 1px solid #eee; padding: 10px; border-radius: 8px;">
+                <div style="display:flex; align-items:center; gap:10px">
+                    <img id="v-foto" src="" style="width:50px; height:50px; border-radius:5px; object-fit:cover; background:#eee">
+                    <strong id="v-nome"></strong>
+                </div>
+            </div>
+            <div class="row">
+                <div><label>QUANTIDADE</label><input type="number" id="v-qtd" value="1" oninput="recalcularTudo()"></div>
+                <div><label>AJUSTE (+/-)</label><input type="text" id="v-ajuste" placeholder="0,00" oninput="formatarMoeda(this); recalcularTudo()"></div>
+            </div>
+            <div class="lucro-tag">
+                TOTAL: <span id="v-total">R$ 0,00</span><br>
+                <small>Lucro: <span id="v-lucro">R$ 0,00</span></small>
+            </div>
+            <button class="btn-main" style="margin-top:20px" onclick="finalizarVenda()">Finalizar Venda</button>
+        </div>
+    </div>
+
+    <div id="stock-screen" class="screen">
+        <header><strong>Meus Produtos</strong></header>
+        <div class="card" id="lista-produtos-estoque"></div>
+    </div>
+
+    <div id="history-screen" class="screen">
+        <header><strong>Relatórios</strong></header>
+        <div style="padding: 15px;">
+            <label>PERÍODO</label>
+            <select id="filtro-periodo" onchange="toggleDatasPersonalizadas()">
+                <option value="diario">Hoje</option>
+                <option value="semanal">Últimos 7 dias</option>
+                <option value="mensal">Este Mês</option>
+                <option value="personalizado">Personalizado</option>
+            </select>
+            
+            <div id="datas-personalizadas" class="hidden" style="margin-top: 10px;">
+                <div class="row">
+                    <div><label>DE</label><input type="date" id="data-ini" onchange="filtrarHistorico()"></div>
+                    <div><label>ATÉ</label><input type="date" id="data-fim" onchange="filtrarHistorico()"></div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div style="display:flex; justify-content: space-between; text-align: center;">
+                <div><small>Vendas</small><div id="h-faturamento" style="font-weight:bold;">R$ 0,00</div></div>
+                <div><small>Lucro</small><div id="h-lucro" style="font-weight:bold; color:var(--primary-green)">R$ 0,00</div></div>
+            </div>
+            <hr style="margin:15px 0; border:0; border-top:1px solid #eee">
+            <div id="lista-historico"></div>
+        </div>
+    </div>
+
+    <nav>
+        <div class="nav-item active" id="nav-home" onclick="showScreen('home-screen')"><i class="fas fa-home"></i><br>Início</div>
+        <div class="nav-item" id="nav-stock" onclick="abrirEstoque()"><i class="fas fa-boxes"></i><br>Estoque</div>
+        <div class="nav-item" id="nav-history" onclick="abrirRelatorios()"><i class="fas fa-chart-line"></i><br>Relatórios</div>
+        <div class="nav-item" onclick="resetarDados()"><i class="fas fa-trash-alt"></i><br>Limpar</div>
+    </nav>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('pdv_storage')) || { produtos: [], vendas: [], logado: false };
+        let produtoSelecionado = null;
+        let fotoBase64 = "";
+        let indexEdicao = -1;
+
+        window.onload = () => {
+            if (!db.logado) {
+                document.getElementById('login-screen').style.display = 'flex';
+            } else {
+                atualizarHome();
+            }
+        };
+
+        function realizarLogin() {
+            db.logado = true; salvarNoStorage();
+            document.getElementById('login-screen').style.display = 'none';
+            atualizarHome();
+        }
+
+        function logout() { db.logado = false; salvarNoStorage(); location.reload(); }
+
+        function formatarMoeda(i) {
+            let v = i.value.replace(/\D/g,'');
+            v = (v/100).toFixed(2).replace(".", ",");
+            v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+            v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+            i.value = v;
+        }
+
+        function converterMoeda(v) { 
+            if(!v) return 0;
+            return parseFloat(v.toString().replace(/\./g, '').replace(',', '.')) || 0; 
+        }
+
+        function previewFoto(input) {
+            if (input.files && input.files[0]) {
+                let reader = new FileReader();
+                reader.onload = (e) => {
+                    fotoBase64 = e.target.result;
+                    document.getElementById('img-preview').src = fotoBase64;
+                    document.getElementById('img-preview').style.display = 'block';
+                    document.getElementById('icon-cam').style.display = 'none';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function abrirCadastro() {
+            indexEdicao = -1;
+            limparFormProduto();
+            document.getElementById('prod-title').innerText = "Cadastrar Produto";
+            showScreen('product-screen');
+        }
+
+        function salvarProduto() {
+            const p = {
+                nome: document.getElementById('p-nome').value,
+                custo: converterMoeda(document.getElementById('p-custo').value),
+                venda: converterMoeda(document.getElementById('p-venda').value),
+                foto: fotoBase64
+            };
+            if(!p.nome || p.venda <= 0) return alert("Dados inválidos!");
+            if(indexEdicao > -1) db.produtos[indexEdicao] = p;
+            else db.produtos.push(p);
+            salvarNoStorage();
+            alert("Sucesso!");
+            location.reload();
+        }
+
+        function editarProduto(index) {
+            indexEdicao = index;
+            const p = db.produtos[index];
+            showScreen('product-screen');
+            document.getElementById('prod-title').innerText = "Editar Produto";
+            document.getElementById('p-nome').value = p.nome;
+            document.getElementById('p-custo').value = p.custo.toFixed(2).replace('.', ',');
+            document.getElementById('p-venda').value = p.venda.toFixed(2).replace('.', ',');
+            if(p.foto) {
+                fotoBase64 = p.foto;
+                document.getElementById('img-preview').src = p.foto;
+                document.getElementById('img-preview').style.display = 'block';
+                document.getElementById('icon-cam').style.display = 'none';
+            }
+        }
+
+        function excluirProduto(index) {
+            if(confirm("Excluir produto?")) {
+                db.produtos.splice(index, 1);
+                salvarNoStorage();
+                abrirEstoque();
+            }
+        }
+
+        function abrirEstoque() {
+            showScreen('stock-screen');
+            const lista = document.getElementById('lista-produtos-estoque');
+            lista.innerHTML = "";
+            db.produtos.forEach((p, i) => {
+                lista.innerHTML += `
+                    <div class="stock-item">
+                        <div style="display:flex; align-items:center; gap:10px">
+                            <img src="${p.foto || ''}" style="width:40px;height:40px;border-radius:5px;object-fit:cover;background:#eee">
+                            <div><strong>${p.nome}</strong><br><small>R$ ${p.venda.toFixed(2).replace('.',',')}</small></div>
+                        </div>
+                        <div>
+                            <i class="fas fa-edit" style="color:var(--light-green); margin-right:15px" onclick="editarProduto(${i})"></i>
+                            <i class="fas fa-trash" style="color:var(--danger)" onclick="excluirProduto(${i})"></i>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function abrirNovaVenda() {
+            produtoSelecionado = null;
+            document.getElementById('v-qtd').value = 1;
+            document.getElementById('v-ajuste').value = "";
+            document.getElementById('search-input').value = "";
+            document.getElementById('selected-product-info').classList.add('hidden');
+            document.getElementById('v-total').innerText = "R$ 0,00";
+            document.getElementById('v-lucro').innerText = "R$ 0,00";
+            showScreen('sale-screen');
+        }
+
+        function buscarProduto(termo) {
+            const resDiv = document.getElementById('search-results');
+            resDiv.innerHTML = "";
+            if(!termo) return;
+            db.produtos.filter(p => p.nome.toLowerCase().includes(termo.toLowerCase())).forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'search-item';
+                item.innerHTML = `<span>${p.nome}</span>`;
+                item.onclick = () => selecionarProduto(p);
+                resDiv.appendChild(item);
+            });
+        }
+
+        function selecionarProduto(p) {
+            produtoSelecionado = p;
+            document.getElementById('search-results').innerHTML = "";
+            document.getElementById('search-input').value = p.nome;
+            document.getElementById('selected-product-info').classList.remove('hidden');
+            document.getElementById('v-nome').innerText = p.nome;
+            document.getElementById('v-foto').src = p.foto || "";
+            recalcularTudo();
+        }
+
+        function recalcularTudo() {
+            if(!produtoSelecionado) return;
+            const qtd = parseInt(document.getElementById('v-qtd').value) || 0;
+            const ajuste = converterMoeda(document.getElementById('v-ajuste').value);
+            const total = (produtoSelecionado.venda * qtd) + ajuste;
+            const lucro = total - (produtoSelecionado.custo * qtd);
+            document.getElementById('v-total').innerText = "R$ " + total.toFixed(2).replace('.', ',');
+            document.getElementById('v-lucro').innerText = "R$ " + lucro.toFixed(2).replace('.', ',');
+        }
+
+        function finalizarVenda() {
+            if(!produtoSelecionado) return alert("Selecione um produto!");
+            const qtd = parseInt(document.getElementById('v-qtd').value) || 1;
+            const ajuste = converterMoeda(document.getElementById('v-ajuste').value);
+            const total = (produtoSelecionado.venda * qtd) + ajuste;
+            const lucro = total - (produtoSelecionado.custo * qtd);
+            db.vendas.push({ 
+                nome: produtoSelecionado.nome, 
+                valor: total, 
+                lucro: lucro, 
+                data: new Date().toISOString() 
+            });
+            salvarNoStorage();
+            alert("Venda concluída!");
+            showScreen('home-screen');
+            atualizarHome();
+        }
+
+        function excluirVenda(index) {
+            if(confirm("Deseja realmente excluir esta venda? Esta ação não pode ser desfeita.")) {
+                // Como o histórico pode estar invertido na exibição, usamos o índice original do array filtrado ou recalculamos
+                // Para simplificar, a função filtrarHistorico agora reconstrói a lista com o índice real
+                db.vendas.splice(index, 1);
+                salvarNoStorage();
+                filtrarHistorico();
+                atualizarHome();
+            }
+        }
+
+        function atualizarHome() {
+            const hoje = new Date().toDateString();
+            let l_hoje = 0, f_total = 0, l_total = 0;
+            db.vendas.forEach(v => {
+                const dVenda = new Date(v.data).toDateString();
+                if(dVenda === hoje) l_hoje += v.lucro;
+                f_total += v.valor;
+                l_total += v.lucro;
+            });
+            document.getElementById('lucro-hoje').innerText = "R$ " + l_hoje.toFixed(2).replace('.', ',');
+            document.getElementById('fat-total-home').innerText = "R$ " + f_total.toFixed(2).replace('.', ',');
+            document.getElementById('lucro-total-home').innerText = "R$ " + l_total.toFixed(2).replace('.', ',');
+        }
+
+        function abrirRelatorios() {
+            showScreen('history-screen');
+            filtrarHistorico();
+        }
+
+        function toggleDatasPersonalizadas() {
+            const p = document.getElementById('filtro-periodo').value;
+            document.getElementById('datas-personalizadas').classList.toggle('hidden', p !== 'personalizado');
+            filtrarHistorico();
+        }
+
+        function filtrarHistorico() {
+            const periodo = document.getElementById('filtro-periodo').value;
+            const agora = new Date();
+            
+            // Criamos uma lista com os índices originais para poder excluir corretamente
+            let filtrados = db.vendas.map((v, index) => ({...v, originalIndex: index})).filter(v => {
+                const dataV = new Date(v.data);
+                if (periodo === 'diario') return dataV.toDateString() === agora.toDateString();
+                if (periodo === 'semanal') return (agora - dataV) / (1000 * 60 * 60 * 24) <= 7;
+                if (periodo === 'mensal') return dataV.getMonth() === agora.getMonth();
+                if (periodo === 'personalizado') {
+                    const ini = new Date(document.getElementById('data-ini').value);
+                    const fim = new Date(document.getElementById('data-fim').value);
+                    if(isNaN(ini) || isNaN(fim)) return true;
+                    fim.setHours(23,59,59);
+                    return dataV >= ini && dataV <= fim;
+                }
+                return true;
+            });
+
+            const lista = document.getElementById('lista-historico');
+            lista.innerHTML = "";
+            let fat = 0, luc = 0;
+            
+            // Invertemos para mostrar as mais recentes primeiro
+            filtrados.reverse().forEach(v => {
+                fat += v.valor; luc += v.lucro;
+                const d = new Date(v.data);
+                lista.innerHTML += `
+                    <div class="history-item">
+                        <div style="flex: 1;">
+                            <strong>${v.nome}</strong><br>
+                            <span class="history-date">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <div style="text-align:right; margin-right: 15px;">
+                            R$ ${v.valor.toFixed(2).replace('.',',')}<br>
+                            <small style="color:var(--primary-green)">+R$ ${v.lucro.toFixed(2).replace('.',',')}</small>
+                        </div>
+                        <i class="fas fa-trash-alt" style="color: var(--danger); cursor: pointer;" onclick="excluirVenda(${v.originalIndex})"></i>
+                    </div>`;
+            });
+            document.getElementById('h-faturamento').innerText = "R$ " + fat.toFixed(2).replace('.', ',');
+            document.getElementById('h-lucro').innerText = "R$ " + luc.toFixed(2).replace('.', ',');
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if(id === 'home-screen') { document.getElementById('nav-home').classList.add('active'); atualizarHome(); }
+            if(id === 'stock-screen') document.getElementById('nav-stock').classList.add('active');
+            if(id === 'history-screen') document.getElementById('nav-history').classList.add('active');
+        }
+
+        function limparFormProduto() {
+            fotoBase64 = "";
+            document.getElementById('p-nome').value = "";
+            document.getElementById('p-custo').value = "";
+            document.getElementById('p-venda').value = "";
+            document.getElementById('img-preview').style.display = 'none';
+            document.getElementById('icon-cam').style.display = 'block';
+        }
+
+        function cancelarEdicao() {
+            indexEdicao = -1;
+            limparFormProduto();
+            showScreen('home-screen');
+        }
+
+        function salvarNoStorage() { localStorage.setItem('pdv_storage', JSON.stringify(db)); }
+
+        function resetarDados() {
+            if(confirm("Apagar tudo?")) { localStorage.clear(); location.reload(); }
+        }
+    </script>
+</body>
+</html>
