@@ -453,41 +453,38 @@
             else alert("Erro na senha!");
         }
 
-        // --- FUNÇÃO DE BACKUP CORRIGIDA PARA APK ---
+        // --- FUNÇÃO DE BACKUP DEFINITIVA PARA APK (BASE64 DATA-URI) ---
         async function exportarDB() {
             try {
-                const dataStr = JSON.stringify(db, null, 2);
+                const dataStr = JSON.stringify(db);
                 const dataAtual = new Date().toLocaleDateString().replace(/\//g, '-');
                 const nomeArquivo = `backup_msc_${dataAtual}.json`;
-                const blob = new Blob([dataStr], { type: 'application/json' });
-
-                // 1. Tenta Share Nativo (Ideal para APK)
+                
+                // 1. Prioridade: Share Nativo (Funciona em APKs modernos com permissão)
                 if (navigator.share) {
-                    const file = new File([blob], nomeArquivo, { type: 'application/json' });
                     try {
+                        const blob = new Blob([dataStr], { type: 'application/json' });
+                        const file = new File([blob], nomeArquivo, { type: 'application/json' });
                         await navigator.share({
-                            title: 'Backup MSC Gestão Pro',
-                            files: [file]
+                            files: [file],
+                            title: 'Backup MSC Gestão'
                         });
-                        return;
-                    } catch (err) { if (err.name === 'AbortError') return; }
+                        return; 
+                    } catch (e) { /* Fallback se falhar */ }
                 }
 
-                // 2. Fallback para download base64 (Compatível com WebViews)
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const link = document.createElement('a');
-                    link.href = e.target.result;
-                    link.download = nomeArquivo;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                };
-                reader.readAsDataURL(blob);
+                // 2. Fallback Definitivo: Data-URI Base64 (Fura bloqueio de WebView/APK)
+                const base64Data = btoa(unescape(encodeURIComponent(dataStr)));
+                const link = document.createElement('a');
+                link.href = 'data:application/json;base64,' + base64Data;
+                link.download = nomeArquivo;
+                document.body.appendChild(link);
+                link.click();
                 
-                alert("O backup foi gerado. Se não abriu o menu de compartilhar, verifique seus Downloads.");
+                setTimeout(() => document.body.removeChild(link), 200);
+                alert("Backup solicitado. Verifique suas notificações de download.");
             } catch (err) {
-                alert("Erro ao gerar backup: " + err.message);
+                alert("Erro ao exportar: " + err.message);
             }
         }
 
