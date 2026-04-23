@@ -38,7 +38,6 @@
             border-radius: 8px; font-size: 16px; background: var(--card-bg); color: var(--text); outline: none;
         }
 
-        /* Estilo do ícone de ver senha */
         .toggle-pass {
             position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
             color: var(--text-light); cursor: pointer; z-index: 10;
@@ -62,7 +61,6 @@
         .row div { flex: 1; }
         .hidden { display: none !important; }
 
-        /* PDV UI */
         #v-ajuste { color: #2e7d32 !important; font-weight: bold; }
         #v-desconto { color: var(--danger) !important; font-weight: bold; }
         .search-results { position: absolute; width: 100%; background: var(--card-bg); border: 1px solid var(--border); z-index: 50; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -206,7 +204,7 @@
             <div class="card">
                 <h3>Dados e Backup</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Compartilhe o arquivo de backup para o seu WhatsApp ou E-mail.</p>
-                <button class="btn-main" onclick="exportarDB()"><i class="fas fa-share-alt"></i> Backup (Compartilhar/Baixar)</button>
+                <button class="btn-main" onclick="exportarDB()"><i class="fas fa-share-alt"></i> Backup (Compartilhar/Salvar)</button>
                 <button class="btn-outline" onclick="document.getElementById('imp-db').click()"><i class="fas fa-upload"></i> Restaurar Dados</button>
                 <input type="file" id="imp-db" class="hidden" accept=".json" onchange="importarDB(event)">
             </div>
@@ -455,39 +453,41 @@
             else alert("Erro na senha!");
         }
 
-        // --- FUNÇÃO DE BACKUP COM FORÇA DE DOWNLOAD ---
+        // --- FUNÇÃO DE BACKUP CORRIGIDA PARA APK ---
         async function exportarDB() {
             try {
                 const dataStr = JSON.stringify(db, null, 2);
                 const dataAtual = new Date().toLocaleDateString().replace(/\//g, '-');
                 const nomeArquivo = `backup_msc_${dataAtual}.json`;
+                const blob = new Blob([dataStr], { type: 'application/json' });
 
-                // Tenta Compartilhamento Direto (Funciona apenas em HTTPS no Chrome)
-                if (navigator.canShare && navigator.share && location.protocol === 'https:') {
-                    const file = new File([dataStr], nomeArquivo, { type: 'application/json' });
+                // 1. Tenta Share Nativo (Ideal para APK)
+                if (navigator.share) {
+                    const file = new File([blob], nomeArquivo, { type: 'application/json' });
                     try {
-                        await navigator.share({ title: 'Backup MSC Gestão Pro', files: [file] });
+                        await navigator.share({
+                            title: 'Backup MSC Gestão Pro',
+                            files: [file]
+                        });
                         return;
                     } catch (err) { if (err.name === 'AbortError') return; }
-                } 
+                }
 
-                // Força o download do arquivo como fallback (Funciona em editores e localhost)
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = nomeArquivo;
-                document.body.appendChild(link);
-                link.click();
-                
-                setTimeout(() => {
+                // 2. Fallback para download base64 (Compatível com WebViews)
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const link = document.createElement('a');
+                    link.href = e.target.result;
+                    link.download = nomeArquivo;
+                    document.body.appendChild(link);
+                    link.click();
                     document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                }, 100);
-
-                alert("O arquivo de backup foi gerado e salvo na sua pasta de Downloads.");
+                };
+                reader.readAsDataURL(blob);
+                
+                alert("O backup foi gerado. Se não abriu o menu de compartilhar, verifique seus Downloads.");
             } catch (err) {
-                alert("Erro ao gerar backup. Tente abrir o arquivo diretamente no navegador Chrome.");
+                alert("Erro ao gerar backup: " + err.message);
             }
         }
 
