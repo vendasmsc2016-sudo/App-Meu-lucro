@@ -203,10 +203,9 @@
             </div>
             <div class="card">
                 <h3>Dados e Backup</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Compartilhe o arquivo de backup para o seu WhatsApp ou E-mail.</p>
-                <button class="btn-main" onclick="exportarDB()"><i class="fas fa-share-alt"></i> Backup (Compartilhar/Salvar)</button>
-                <button class="btn-outline" onclick="document.getElementById('imp-db').click()"><i class="fas fa-upload"></i> Restaurar Dados</button>
-                <input type="file" id="imp-db" class="hidden" accept=".json" onchange="importarDB(event)">
+                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Gere um código de segurança e cole no seu WhatsApp.</p>
+                <button class="btn-main" onclick="exportarDB()"><i class="fas fa-copy"></i> Backup (Copiar Código)</button>
+                <button class="btn-outline" style="margin-top:10px" onclick="importarDB()"><i class="fas fa-paste"></i> Restaurar (Colar Código)</button>
             </div>
             <div class="card">
                 <h3>Aparência</h3>
@@ -453,50 +452,46 @@
             else alert("Erro na senha!");
         }
 
-        // --- FUNÇÃO DE BACKUP DEFINITIVA PARA APK (BASE64 DATA-URI) ---
-        async function exportarDB() {
+        // --- SISTEMA DE BACKUP VIA CÓDIGO (100% COMPATÍVEL COM APK) ---
+        function exportarDB() {
             try {
                 const dataStr = JSON.stringify(db);
-                const dataAtual = new Date().toLocaleDateString().replace(/\//g, '-');
-                const nomeArquivo = `backup_msc_${dataAtual}.json`;
+                const codigoBackup = btoa(unescape(encodeURIComponent(dataStr)));
                 
-                // 1. Prioridade: Share Nativo (Funciona em APKs modernos com permissão)
-                if (navigator.share) {
-                    try {
-                        const blob = new Blob([dataStr], { type: 'application/json' });
-                        const file = new File([blob], nomeArquivo, { type: 'application/json' });
-                        await navigator.share({
-                            files: [file],
-                            title: 'Backup MSC Gestão'
-                        });
-                        return; 
-                    } catch (e) { /* Fallback se falhar */ }
+                const textArea = document.createElement("textarea");
+                textArea.value = codigoBackup;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert("✅ CÓDIGO COPIADO!\n\nCole este código no seu WhatsApp ou e-mail para salvar seu backup.");
+                } catch (err) {
+                    prompt("COPIE O CÓDIGO ABAIXO:", codigoBackup);
                 }
-
-                // 2. Fallback Definitivo: Data-URI Base64 (Fura bloqueio de WebView/APK)
-                const base64Data = btoa(unescape(encodeURIComponent(dataStr)));
-                const link = document.createElement('a');
-                link.href = 'data:application/json;base64,' + base64Data;
-                link.download = nomeArquivo;
-                document.body.appendChild(link);
-                link.click();
-                
-                setTimeout(() => document.body.removeChild(link), 200);
-                alert("Backup solicitado. Verifique suas notificações de download.");
+                document.body.removeChild(textArea);
             } catch (err) {
-                alert("Erro ao exportar: " + err.message);
+                alert("Erro ao gerar backup: " + err.message);
             }
         }
 
-        function importarDB(e) {
-            const reader = new FileReader();
-            reader.onload = ev => {
-                try {
-                    db = JSON.parse(ev.target.result); db.logado = false;
-                    salvarDB(); alert("Dados restaurados! Faça login."); location.reload();
-                } catch(e) { alert("Arquivo inválido!"); }
-            };
-            reader.readAsText(e.target.files[0]);
+        function importarDB() {
+            const codigo = prompt("COLE O CÓDIGO DE BACKUP AQUI:");
+            if (!codigo) return;
+            try {
+                const dataStr = decodeURIComponent(escape(atob(codigo)));
+                const dadosImportados = JSON.parse(dataStr);
+                if (dadosImportados.user) {
+                    db = dadosImportados;
+                    db.logado = false;
+                    salvarDB();
+                    alert("✅ DADOS RESTAURADOS!\nO app será reiniciado.");
+                    location.reload();
+                } else {
+                    alert("Código inválido!");
+                }
+            } catch (err) {
+                alert("Erro ao restaurar dados.");
+            }
         }
 
         function showScreen(id) {
