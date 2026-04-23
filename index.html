@@ -203,9 +203,10 @@
             </div>
             <div class="card">
                 <h3>Dados e Backup</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Gere um código de segurança e cole no seu WhatsApp.</p>
-                <button class="btn-main" onclick="exportarDB()"><i class="fas fa-copy"></i> Backup (Copiar Código)</button>
-                <button class="btn-outline" style="margin-top:10px" onclick="importarDB()"><i class="fas fa-paste"></i> Restaurar (Colar Código)</button>
+                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Salve seus dados em um arquivo para não perder nada.</p>
+                <button class="btn-main" onclick="exportarArquivoDB()"><i class="fas fa-file-download"></i> Salvar Arquivo de Backup</button>
+                <button class="btn-outline" style="margin-top:10px" onclick="document.getElementById('import-file').click()"><i class="fas fa-file-upload"></i> Restaurar do Arquivo</button>
+                <input type="file" id="import-file" class="hidden" accept=".txt" onchange="importarArquivoDB(this)">
             </div>
             <div class="card">
                 <h3>Aparência</h3>
@@ -452,63 +453,54 @@
             else alert("Erro na senha!");
         }
 
-        // --- SISTEMA DE BACKUP COM CÓPIA FORÇADA (ULTRA COMPATÍVEL COM APK) ---
-        function exportarDB() {
+        // --- NOVO SISTEMA DE BACKUP POR ARQUIVO (FUNCIONA 100% EM APK) ---
+        function exportarArquivoDB() {
             try {
                 const dataStr = JSON.stringify(db);
-                const codigoBackup = btoa(unescape(encodeURIComponent(dataStr)));
+                const blob = new Blob([dataStr], { type: "text/plain" });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                const dataAtual = new Date().toLocaleDateString().replace(/\//g, '-');
                 
-                // Cria elemento auxiliar invisível mas "focável"
-                const aux = document.createElement("textarea");
-                aux.value = codigoBackup;
-                aux.setAttribute("readonly", "");
-                aux.style.position = "absolute";
-                aux.style.left = "-9999px";
-                document.body.appendChild(aux);
+                a.href = url;
+                a.download = `BACKUP_MSC_PRO_${dataAtual}.txt`;
+                document.body.appendChild(a);
+                a.click();
                 
-                // Seleção forçada
-                aux.select();
-                aux.setSelectionRange(0, 99999); 
-                
-                let copiado = false;
-                try {
-                    // Executa o comando de cópia nativo (o mais aceito por WebViews)
-                    copiado = document.execCommand("copy");
-                } catch (err) {
-                    copiado = false;
-                }
-                
-                document.body.removeChild(aux);
-
-                if (copiado) {
-                    alert("✅ CÓDIGO COPIADO!\n\nO backup está na sua área de transferência. Agora é só colar no seu WhatsApp ou Bloco de Notas.");
-                } else {
-                    // Fallback se o Android bloquear a ação silenciosa
-                    prompt("O sistema bloqueou a cópia automática. COPIE O CÓDIGO ABAIXO MANUALMENTE:", codigoBackup);
-                }
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                alert("✅ BACKUP SALVO!\nO arquivo foi baixado na sua pasta de Downloads.");
             } catch (err) {
-                alert("Erro ao gerar backup: " + err.message);
+                alert("Erro ao exportar: " + err.message);
             }
         }
 
-        function importarDB() {
-            const codigo = prompt("COLE O CÓDIGO DE BACKUP AQUI:");
-            if (!codigo) return;
-            try {
-                const dataStr = decodeURIComponent(escape(atob(codigo)));
-                const dadosImportados = JSON.parse(dataStr);
-                if (dadosImportados.user) {
-                    db = dadosImportados;
-                    db.logado = false;
-                    salvarDB();
-                    alert("✅ DADOS RESTAURADOS!\nO app será reiniciado.");
-                    location.reload();
-                } else {
-                    alert("Código inválido!");
+        function importarArquivoDB(input) {
+            const arquivo = input.files[0];
+            if (!arquivo) return;
+            
+            const leitor = new FileReader();
+            leitor.onload = function(e) {
+                try {
+                    const conteudo = e.target.result;
+                    const dadosImportados = JSON.parse(conteudo);
+                    if (dadosImportados.user) {
+                        if(confirm("Isso vai substituir os dados atuais pelos do arquivo. Confirmar?")) {
+                            db = dadosImportados;
+                            db.logado = false; // Força login após restaurar
+                            salvarDB();
+                            alert("✅ DADOS RESTAURADOS COM SUCESSO!");
+                            location.reload();
+                        }
+                    } else {
+                        alert("Arquivo inválido!");
+                    }
+                } catch (err) {
+                    alert("Erro ao ler o arquivo. Verifique se selecionou o arquivo de backup correto.");
                 }
-            } catch (err) {
-                alert("Erro ao restaurar: Código incorreto ou corrompido.");
-            }
+            };
+            leitor.readAsText(arquivo);
+            input.value = ""; // Limpa o input
         }
 
         function showScreen(id) {
