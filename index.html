@@ -452,23 +452,40 @@
             else alert("Erro na senha!");
         }
 
-        // --- SISTEMA DE BACKUP VIA CÓDIGO (100% COMPATÍVEL COM APK) ---
+        // --- SISTEMA DE BACKUP COM CÓPIA FORÇADA (ULTRA COMPATÍVEL COM APK) ---
         function exportarDB() {
             try {
                 const dataStr = JSON.stringify(db);
                 const codigoBackup = btoa(unescape(encodeURIComponent(dataStr)));
                 
-                const textArea = document.createElement("textarea");
-                textArea.value = codigoBackup;
-                document.body.appendChild(textArea);
-                textArea.select();
+                // Cria elemento auxiliar invisível mas "focável"
+                const aux = document.createElement("textarea");
+                aux.value = codigoBackup;
+                aux.setAttribute("readonly", "");
+                aux.style.position = "absolute";
+                aux.style.left = "-9999px";
+                document.body.appendChild(aux);
+                
+                // Seleção forçada
+                aux.select();
+                aux.setSelectionRange(0, 99999); 
+                
+                let copiado = false;
                 try {
-                    document.execCommand('copy');
-                    alert("✅ CÓDIGO COPIADO!\n\nCole este código no seu WhatsApp ou e-mail para salvar seu backup.");
+                    // Executa o comando de cópia nativo (o mais aceito por WebViews)
+                    copiado = document.execCommand("copy");
                 } catch (err) {
-                    prompt("COPIE O CÓDIGO ABAIXO:", codigoBackup);
+                    copiado = false;
                 }
-                document.body.removeChild(textArea);
+                
+                document.body.removeChild(aux);
+
+                if (copiado) {
+                    alert("✅ CÓDIGO COPIADO!\n\nO backup está na sua área de transferência. Agora é só colar no seu WhatsApp ou Bloco de Notas.");
+                } else {
+                    // Fallback se o Android bloquear a ação silenciosa
+                    prompt("O sistema bloqueou a cópia automática. COPIE O CÓDIGO ABAIXO MANUALMENTE:", codigoBackup);
+                }
             } catch (err) {
                 alert("Erro ao gerar backup: " + err.message);
             }
@@ -490,7 +507,7 @@
                     alert("Código inválido!");
                 }
             } catch (err) {
-                alert("Erro ao restaurar dados.");
+                alert("Erro ao restaurar: Código incorreto ou corrompido.");
             }
         }
 
