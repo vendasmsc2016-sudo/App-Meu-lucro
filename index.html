@@ -67,6 +67,9 @@
         
         .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         .color-opt { height: 40px; border-radius: 8px; cursor: pointer; border: 2px solid rgba(0,0,0,0.1); }
+
+        .search-results { background: var(--card-bg); border-radius: 8px; max-height: 200px; overflow-y: auto; position: absolute; width: 100%; z-index: 50; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .search-item { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
     </style>
 </head>
 <body id="app-body">
@@ -121,7 +124,7 @@
                     <div></div>
                     <div><label>DESCONTO</label><input type="text" id="v-desconto" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
                 </div>
-                <div id="v-stats-lucro" class="info-lucro-venda hidden" style="text-align:center; padding:10px; font-size:13px; color:var(--text-light)">
+                <div id="v-stats-lucro" class="hidden" style="text-align:center; padding:10px; font-size:13px; color:var(--text-light)">
                     <span id="v-lucro-real">Lucro: R$ 0,00</span>
                 </div>
                 <div class="lucro-tag">TOTAL: <span id="v-total-txt">R$ 0,00</span></div>
@@ -135,7 +138,7 @@
         </div>
 
         <div id="prod-form-screen" class="screen">
-            <header><i class="fas fa-arrow-left" onclick="showScreen('estoque-screen')"></i><strong>Novo Item</strong></header>
+            <header><i class="fas fa-arrow-left" onclick="renderEstoque()"></i><strong>Novo Item</strong></header>
             <div class="card">
                 <div class="foto-placeholder" onclick="document.getElementById('file-in').click()">
                     <i class="fas fa-camera" id="icon-cam"></i>
@@ -188,14 +191,11 @@
 
             <div class="card">
                 <h3>Backup do Comércio</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:15px;">Sempre que quiser salvar, clique no botão e copie o código que aparecer.</p>
-                
-                <button class="btn-main" onclick="abrirBackupBox()"><i class="fas fa-lock"></i> GERAR CÓDIGO DE SEGURANÇA</button>
-                
+                <p style="font-size:12px; color:var(--text-light); margin-bottom:15px;">Gere o código e cole no seu WhatsApp para não perder seus dados.</p>
+                <button class="btn-main" onclick="abrirBackupBox()"><i class="fas fa-sync"></i> GERAR CÓDIGO DE SEGURANÇA</button>
                 <hr style="margin: 20px 0; opacity: 0.1;">
-                
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Para restaurar, cole seu código salvo abaixo:</p>
-                <textarea id="area-restaurar" placeholder="Cole seu código de segurança aqui..." rows="4" style="background: #f9f9f9; font-size:10px;"></textarea>
+                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Para restaurar:</p>
+                <textarea id="area-restaurar" placeholder="Cole seu código JSON aqui..." rows="4" style="background: #f9f9f9; font-size:10px;"></textarea>
                 <button class="btn-outline" onclick="restaurarBackupBox()">RESTAURAR AGORA</button>
             </div>
 
@@ -214,8 +214,8 @@
         <div id="backup-box-layer" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;">
             <div class="card" style="width:100%; max-height:80%; overflow-y:auto;">
                 <h2 style="margin-bottom:10px;">Seu Backup</h2>
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Clique dentro da caixa abaixo, selecione tudo e COPIE. Depois cole no seu WhatsApp para guardar.</p>
-                <textarea id="texto-backup-gerado" readonly rows="10" style="background:#fff; font-family:monospace; font-size:10px; color:#000;" onclick="this.select()"></textarea>
+                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Copie o texto abaixo e guarde no seu WhatsApp.</p>
+                <textarea id="texto-backup-gerado" readonly rows="10" style="background:#f5f5f5; font-family:monospace; font-size:10px; color:#000; word-break: break-all;" onclick="this.select()"></textarea>
                 <button class="btn-main" style="margin-top:15px;" onclick="document.getElementById('backup-box-layer').classList.add('hidden')">FECHAR</button>
             </div>
         </div>
@@ -248,7 +248,7 @@
             const e = document.getElementById('auth-email').value;
             const p = document.getElementById('auth-pass').value;
             if(!db.user) {
-                if(!e.includes('@') || p.length !== 6) return alert("E-mail válido e senha de 6 números!");
+                if(!e.includes('@') || p.length !== 6) return alert("E-mail e senha de 6 números!");
                 db.user = { email: e, password: p };
                 db.logado = true;
                 salvarDB(); iniciarSistema();
@@ -266,31 +266,32 @@
             atualizarHome();
         }
 
-        // --- SOLUÇÃO DE BACKUP POR EXPOSIÇÃO DE TEXTO ---
+        // --- BACKUP OTIMIZADO (REMOVE FOTOS PARA REDUZIR TAMANHO) ---
         function abrirBackupBox() {
-            const dataStr = JSON.stringify(db);
-            const code = btoa(unescape(encodeURIComponent(dataStr)));
-            document.getElementById('texto-backup-gerado').value = code;
+            // Cria uma cópia dos dados sem as fotos pesadas para o backup ser leve
+            let backupLeve = JSON.parse(JSON.stringify(db));
+            backupLeve.produtos.forEach(p => p.foto = ""); 
+            
+            const dataStr = JSON.stringify(backupLeve);
+            document.getElementById('texto-backup-gerado').value = dataStr;
             document.getElementById('backup-box-layer').classList.remove('hidden');
         }
 
         function restaurarBackupBox() {
             const code = document.getElementById('area-restaurar').value.trim();
-            if(!code) return alert("Cole seu código primeiro!");
+            if(!code) return alert("Cole o código aqui!");
             try {
-                const dataStr = decodeURIComponent(escape(atob(code)));
-                const parsed = JSON.parse(dataStr);
-                if(parsed.user && confirm("Restaurar dados? Isso substituirá tudo o que você tem hoje.")) {
+                const parsed = JSON.parse(code);
+                if(parsed.user && confirm("Isso vai restaurar suas vendas e produtos. Continuar?")) {
                     db = parsed;
-                    db.logado = false; // Desloga por segurança após restaurar
+                    db.logado = false;
                     salvarDB();
-                    alert("Dados restaurados! Faça login novamente.");
+                    alert("Dados restaurados! Entre novamente.");
                     location.reload();
                 }
-            } catch(e) { alert("Código inválido! Verifique se copiou tudo corretamente."); }
+            } catch(e) { alert("Código inválido!"); }
         }
 
-        // --- LOGICA DE PRODUTOS E VENDAS ---
         function mask(i) {
             let v = i.value.replace(/\D/g,'');
             v = (v/100).toFixed(2).replace(".", ",");
@@ -310,6 +311,8 @@
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(ni => ni.classList.remove('active'));
+            if(id === 'home-screen') document.getElementById('nav-home').classList.add('active');
         }
 
         function atualizarHome() {
@@ -324,6 +327,7 @@
 
         function renderEstoque() {
             showScreen('estoque-screen');
+            document.getElementById('nav-estoque').classList.add('active');
             const lista = document.getElementById('lista-estoque');
             lista.innerHTML = db.produtos.length === 0 ? "<p style='text-align:center; padding:20px;'>Vazio.</p>" : "";
             db.produtos.forEach((p, i) => {
@@ -333,6 +337,16 @@
                     <div style="display:flex; gap:15px;"><i class="fas fa-edit" style="color:var(--primary); padding:10px;" onclick="editarProd(${i})"></i><i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerProd(${i})"></i></div>
                 </div>`;
             });
+        }
+
+        function abrirCadastroProd() {
+            editIdx = null; base64Img = "";
+            document.getElementById('p-nome').value = "";
+            document.getElementById('p-custo').value = "";
+            document.getElementById('p-venda').value = "";
+            document.getElementById('p-preview').classList.add('hidden');
+            document.getElementById('icon-cam').classList.remove('hidden');
+            showScreen('prod-form-screen');
         }
 
         function salvarProduto() {
@@ -410,6 +424,7 @@
 
         function renderRelatorio() {
             showScreen('rel-screen');
+            document.getElementById('nav-rel').classList.add('active');
             const modo = document.getElementById('rel-periodo').value;
             const lista = document.getElementById('rel-lista'); lista.innerHTML = "";
             let faturamento = 0, lucro = 0;
