@@ -37,6 +37,9 @@
             border-radius: 8px; font-size: 16px; background: var(--card-bg); color: var(--text); outline: none;
         }
 
+        #v-ajuste { color: #2e7d32; font-weight: bold; }
+        #v-desconto { color: #d32f2f; font-weight: bold; }
+
         .toggle-pass {
             position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
             color: var(--text-light); cursor: pointer; z-index: 10;
@@ -84,6 +87,7 @@
             <i class="fas fa-eye toggle-pass" onclick="toggleView('auth-pass', this)"></i>
         </div>
         <button class="btn-main" onclick="autenticar()">Confirmar Acesso</button>
+        <a href="#" style="margin-top: 20px; color: var(--primary); font-size: 13px; text-decoration: none;" onclick="recuperarSenha()">Esqueci minha senha</a>
     </div>
 
     <div id="main-app" class="hidden">
@@ -124,8 +128,9 @@
                     <div></div>
                     <div><label>DESCONTO</label><input type="text" id="v-desconto" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
                 </div>
-                <div id="v-stats-lucro" class="hidden" style="text-align:center; padding:10px; font-size:13px; color:var(--text-light)">
-                    <span id="v-lucro-real">Lucro: R$ 0,00</span>
+                <div id="v-stats-lucro" class="hidden" style="text-align:center; padding:10px; font-size:13px; color:var(--primary)">
+                    <div id="v-lucro-real" style="font-weight: bold;">Lucro: R$ 0,00</div>
+                    <div id="v-lucro-perc" style="font-weight: bold;">Margem: 0%</div>
                 </div>
                 <div class="lucro-tag">TOTAL: <span id="v-total-txt">R$ 0,00</span></div>
                 <button class="btn-main" style="margin-top:15px" onclick="finalizarVenda()">Finalizar Venda</button>
@@ -158,11 +163,18 @@
             <header><strong>Relatórios</strong></header>
             <div class="card">
                 <label>FILTRO</label>
-                <select id="rel-periodo" onchange="renderRelatorio()">
+                <select id="rel-periodo" onchange="toggleRelPersonalizado()">
                     <option value="hoje">Hoje</option>
                     <option value="7dias">Últimos 7 dias</option>
                     <option value="mes">Mês Atual</option>
+                    <option value="personalizado">Personalizado</option>
                 </select>
+                <div id="rel-datas-personalizadas" class="hidden" style="margin-top: 10px;">
+                    <div class="row">
+                        <div><label>INÍCIO</label><input type="date" id="rel-data-ini" onchange="renderRelatorio()"></div>
+                        <div><label>FIM</label><input type="date" id="rel-data-fim" onchange="renderRelatorio()"></div>
+                    </div>
+                </div>
             </div>
             <div class="card" style="display:flex; justify-content:space-between; text-align:center;">
                 <div><small>Vendas</small><br><strong id="rel-fat-total">R$ 0,00</strong></div>
@@ -260,18 +272,26 @@
             }
         }
 
+        function recuperarSenha() {
+            if (!db.user) return alert("Nenhum usuário cadastrado neste dispositivo.");
+            const emailConfirm = prompt("Para recuperar sua senha, confirme o e-mail cadastrado:");
+            if (emailConfirm === null) return;
+            if (emailConfirm.toLowerCase().trim() === db.user.email.toLowerCase().trim()) {
+                alert("E-mail confirmado com sucesso!\n\nSua senha atual é: " + db.user.password);
+            } else {
+                alert("E-mail incorreto! Não foi possível recuperar a senha.");
+            }
+        }
+
         function iniciarSistema() {
             document.getElementById('auth-layer').classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             atualizarHome();
         }
 
-        // --- BACKUP OTIMIZADO (REMOVE FOTOS PARA REDUZIR TAMANHO) ---
         function abrirBackupBox() {
-            // Cria uma cópia dos dados sem as fotos pesadas para o backup ser leve
             let backupLeve = JSON.parse(JSON.stringify(db));
             backupLeve.produtos.forEach(p => p.foto = ""); 
-            
             const dataStr = JSON.stringify(backupLeve);
             document.getElementById('texto-backup-gerado').value = dataStr;
             document.getElementById('backup-box-layer').classList.remove('hidden');
@@ -381,7 +401,9 @@
             prodSel = null; document.getElementById('v-info').classList.add('hidden');
             document.getElementById('v-qtd').value = 1; document.getElementById('v-ajuste').value = "";
             document.getElementById('v-desconto').value = ""; document.getElementById('v-total-txt').innerText = "R$ 0,00";
-            document.getElementById('v-busca').value = ""; showScreen('venda-screen');
+            document.getElementById('v-busca').value = ""; 
+            document.getElementById('v-stats-lucro').classList.add('hidden');
+            showScreen('venda-screen');
         }
 
         function filtrarItensVenda(t) {
@@ -405,10 +427,16 @@
             const q = parseInt(document.getElementById('v-qtd').value) || 0;
             const a = conv(document.getElementById('v-ajuste').value);
             const d = conv(document.getElementById('v-desconto').value);
+            
             const totalFinal = Math.max(0, (prodSel.venda * q) + a - d);
-            const lucroReal = totalFinal - (prodSel.custo * q);
+            const custoTotal = prodSel.custo * q;
+            const lucroReal = totalFinal - custoTotal;
+            
+            const margem = custoTotal > 0 ? ((lucroReal / custoTotal) * 100).toFixed(1) : 0;
+
             document.getElementById('v-total-txt').innerText = "R$ " + totalFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('v-lucro-real').innerText = "Lucro: R$ " + lucroReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('v-lucro-perc').innerText = "Margem: " + margem + "%";
             document.getElementById('v-stats-lucro').classList.remove('hidden');
         }
 
@@ -422,28 +450,62 @@
             salvarDB(); alert("Venda finalizada!"); showScreen('home-screen'); atualizarHome();
         }
 
+        function toggleRelPersonalizado() {
+            const modo = document.getElementById('rel-periodo').value;
+            const box = document.getElementById('rel-datas-personalizadas');
+            if(modo === 'personalizado') box.classList.remove('hidden');
+            else box.classList.add('hidden');
+            renderRelatorio();
+        }
+
         function renderRelatorio() {
             showScreen('rel-screen');
             document.getElementById('nav-rel').classList.add('active');
             const modo = document.getElementById('rel-periodo').value;
             const lista = document.getElementById('rel-lista'); lista.innerHTML = "";
             let faturamento = 0, lucro = 0;
+
             const filtrados = db.vendas.filter(v => {
                 const dv = new Date(v.data);
-                if(modo === 'hoje') return dv.toDateString() === new Date().toDateString();
-                if(modo === '7dias') return (new Date() - dv) / 86400000 <= 7;
-                if(modo === 'mes') return dv.getMonth() === new Date().getMonth();
+                const hoje = new Date();
+                
+                if(modo === 'hoje') return dv.toDateString() === hoje.toDateString();
+                if(modo === '7dias') return (hoje - dv) / 86400000 <= 7;
+                if(modo === 'mes') return dv.getMonth() === hoje.getMonth() && dv.getFullYear() === hoje.getFullYear();
+                if(modo === 'personalizado') {
+                    const iniVal = document.getElementById('rel-data-ini').value;
+                    const fimVal = document.getElementById('rel-data-fim').value;
+                    if(!iniVal || !fimVal) return true;
+                    const dIni = new Date(iniVal + "T00:00:00");
+                    const dFim = new Date(fimVal + "T23:59:59");
+                    return dv >= dIni && dv <= dFim;
+                }
                 return true;
             });
-            filtrados.reverse().forEach((v) => {
+            
+            [...filtrados].reverse().forEach((v) => {
                 faturamento += v.valor; lucro += v.lucro;
+                const dObj = new Date(v.data);
+                // Formatação da data e hora
+                const dataFormatada = dObj.toLocaleDateString() + " " + dObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
                 lista.innerHTML += `<div class="card row" style="margin:8px 0; font-size:13px; align-items:center;">
-                    <div style="flex:1"><strong>${v.nome}</strong><br><small>${new Date(v.data).toLocaleDateString()}</small></div>
-                    <div style="text-align:right">R$ ${v.valor.toFixed(2)}<br><small style="color:var(--primary)">Lucro: R$ ${v.lucro.toFixed(2)}</small></div>
+                    <div style="flex:1"><strong>${v.nome}</strong><br><small>${dataFormatada}</small></div>
+                    <div style="text-align:right; margin-right:10px;">R$ ${v.valor.toFixed(2)}<br><small style="color:var(--primary)">Lucro: R$ ${v.lucro.toFixed(2)}</small></div>
+                    <i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerVenda(${v.id})"></i>
                 </div>`;
             });
             document.getElementById('rel-fat-total').innerText = "R$ " + faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-lucro-total').innerText = "R$ " + lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        }
+
+        function removerVenda(id) {
+            if(confirm("Deseja excluir este registro de venda?")) {
+                db.vendas = db.vendas.filter(v => v.id !== id);
+                salvarDB();
+                renderRelatorio();
+                atualizarHome();
+            }
         }
 
         function toggleView(id, btn) {
