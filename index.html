@@ -95,8 +95,16 @@
         <div id="home-screen" class="screen active">
             <header><strong>Painel MSC</strong><i class="fas fa-cog" onclick="showScreen('config-screen')"></i></header>
             <div class="card" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white;">
-                <span style="opacity: 0.8;">Faturamento Hoje</span>
-                <h1 id="fat-hoje">R$ 0,00</h1>
+                <div style="display: flex; gap: 10px; justify-content: space-between;">
+                    <div>
+                        <span style="opacity: 0.8; font-size: 12px;">Faturamento Hoje</span>
+                        <h2 id="fat-hoje">R$ 0,00</h2>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="opacity: 0.8; font-size: 12px;">Lucro Hoje</span>
+                        <h2 id="lucro-hoje">R$ 0,00</h2>
+                    </div>
+                </div>
                 <hr style="margin: 10px 0; opacity: 0.2;">
                 <small>Total Acumulado: <span id="fat-total">R$ 0,00</span></small>
             </div>
@@ -178,7 +186,8 @@
             </div>
             <div class="card" style="display:flex; justify-content:space-between; text-align:center;">
                 <div><small>Vendas</small><br><strong id="rel-fat-total">R$ 0,00</strong></div>
-                <div><small>Lucro</small><br><strong id="rel-lucro-total" style="color:var(--primary)">R$ 0,00</strong></div>
+                <div><small>Custo Operação</small><br><strong id="rel-custo-total" style="color:var(--danger)">R$ 0,00</strong></div>
+                <div><small>Lucro</small><br><strong id="rel-lucro-total" style="color:var(--primary)">R$ 0,00</strong><br><small id="rel-margem-total" style="color:var(--primary); font-size:10px;">(0%)</small></div>
             </div>
             <div id="rel-lista" style="padding: 0 15px;"></div>
         </div>
@@ -336,13 +345,17 @@
         }
 
         function atualizarHome() {
-            let hoje = 0, total = 0;
+            let fat_hoje = 0, lucro_hoje = 0, total_fat = 0;
             db.vendas.forEach(v => {
-                if(new Date(v.data).toDateString() === new Date().toDateString()) hoje += v.valor;
-                total += v.valor;
+                if(new Date(v.data).toDateString() === new Date().toDateString()) {
+                    fat_hoje += v.valor;
+                    lucro_hoje += v.lucro;
+                }
+                total_fat += v.valor;
             });
-            document.getElementById('fat-hoje').innerText = "R$ " + hoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-            document.getElementById('fat-total').innerText = "R$ " + total.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('fat-hoje').innerText = "R$ " + fat_hoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('lucro-hoje').innerText = "R$ " + lucro_hoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('fat-total').innerText = "R$ " + total_fat.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         }
 
         function renderEstoque() {
@@ -446,7 +459,15 @@
             const a = conv(document.getElementById('v-ajuste').value);
             const d = conv(document.getElementById('v-desconto').value);
             const totalFinal = Math.max(0, (prodSel.venda * q) + a - d);
-            db.vendas.push({ id: Date.now(), nome: prodSel.nome, valor: totalFinal, lucro: totalFinal - (prodSel.custo * q), data: new Date().toISOString() });
+            const custoTotal = prodSel.custo * q;
+            db.vendas.push({ 
+                id: Date.now(), 
+                nome: prodSel.nome, 
+                valor: totalFinal, 
+                custo: custoTotal,
+                lucro: totalFinal - custoTotal, 
+                data: new Date().toISOString() 
+            });
             salvarDB(); alert("Venda finalizada!"); showScreen('home-screen'); atualizarHome();
         }
 
@@ -463,7 +484,7 @@
             document.getElementById('nav-rel').classList.add('active');
             const modo = document.getElementById('rel-periodo').value;
             const lista = document.getElementById('rel-lista'); lista.innerHTML = "";
-            let faturamento = 0, lucro = 0;
+            let faturamento = 0, lucro = 0, custoTotalPeriodo = 0;
 
             const filtrados = db.vendas.filter(v => {
                 const dv = new Date(v.data);
@@ -484,19 +505,37 @@
             });
             
             [...filtrados].reverse().forEach((v) => {
-                faturamento += v.valor; lucro += v.lucro;
+                faturamento += v.valor; 
+                lucro += v.lucro;
+                const custoVenda = (v.custo || 0);
+                custoTotalPeriodo += custoVenda;
+
                 const dObj = new Date(v.data);
-                // Formatação da data e hora
                 const dataFormatada = dObj.toLocaleDateString() + " " + dObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
+                const margemItem = (custoVenda > 0) ? ((v.lucro / custoVenda) * 100).toFixed(1) : "0";
+
                 lista.innerHTML += `<div class="card row" style="margin:8px 0; font-size:13px; align-items:center;">
-                    <div style="flex:1"><strong>${v.nome}</strong><br><small>${dataFormatada}</small></div>
-                    <div style="text-align:right; margin-right:10px;">R$ ${v.valor.toFixed(2)}<br><small style="color:var(--primary)">Lucro: R$ ${v.lucro.toFixed(2)}</small></div>
+                    <div style="flex:1">
+                        <strong>${v.nome}</strong><br>
+                        <small>${dataFormatada}</small><br>
+                        <small style="color:var(--text-light)">Custo: R$ ${custoVenda.toFixed(2)}</small>
+                    </div>
+                    <div style="text-align:right; margin-right:10px;">
+                        R$ ${v.valor.toFixed(2)}<br>
+                        <small style="color:var(--primary)">Lucro: R$ ${v.lucro.toFixed(2)}</small><br>
+                        <small style="color:var(--primary); font-size:10px;">Margem: ${margemItem}%</small>
+                    </div>
                     <i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerVenda(${v.id})"></i>
                 </div>`;
             });
+
+            const margemMedia = custoTotalPeriodo > 0 ? ((lucro / custoTotalPeriodo) * 100).toFixed(1) : "0";
+
             document.getElementById('rel-fat-total').innerText = "R$ " + faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('rel-custo-total').innerText = "R$ " + custoTotalPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-lucro-total').innerText = "R$ " + lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('rel-margem-total').innerText = "(" + margemMedia + "%)";
         }
 
         function removerVenda(id) {
