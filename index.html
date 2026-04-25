@@ -467,6 +467,7 @@
             db.vendas.push({ 
                 id: Date.now(), 
                 nome: prodSel.nome, 
+                qtd: q,
                 valor: totalFinal, 
                 custo: custoTotal,
                 lucro: totalFinal - custoTotal, 
@@ -494,8 +495,6 @@
             const filtrados = db.vendas.filter(v => {
                 const dv = new Date(v.data);
                 const hoje = new Date();
-                
-                // Filtro de Período
                 let passaData = true;
                 if(modo === 'hoje') passaData = dv.toDateString() === hoje.toDateString();
                 else if(modo === '7dias') passaData = (hoje - dv) / 86400000 <= 7;
@@ -509,10 +508,7 @@
                         passaData = dv >= dIni && dv <= dFim;
                     }
                 }
-
-                // Filtro de Nome de Produto
                 const passaNome = v.nome.toLowerCase().includes(busca);
-
                 return passaData && passaNome;
             });
             
@@ -521,15 +517,14 @@
                 lucro += v.lucro;
                 const custoVenda = (v.custo || 0);
                 custoTotalPeriodo += custoVenda;
-
                 const dObj = new Date(v.data);
                 const dataFormatada = dObj.toLocaleDateString() + " " + dObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                
                 const margemItem = (custoVenda > 0) ? ((v.lucro / custoVenda) * 100).toFixed(1) : "0";
+                const qtdTexto = v.qtd ? ` (x${v.qtd})` : "";
 
                 lista.innerHTML += `<div class="card row" style="margin:8px 0; font-size:13px; align-items:center;">
                     <div style="flex:1">
-                        <strong>${v.nome}</strong><br>
+                        <strong>${v.nome}${qtdTexto}</strong><br>
                         <small>${dataFormatada}</small><br>
                         <small style="color:var(--text-light)">Custo: R$ ${custoVenda.toFixed(2)}</small>
                     </div>
@@ -543,7 +538,6 @@
             });
 
             const margemMedia = custoTotalPeriodo > 0 ? ((lucro / custoTotalPeriodo) * 100).toFixed(1) : "0";
-
             document.getElementById('rel-fat-total').innerText = "R$ " + faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-custo-total').innerText = "R$ " + custoTotalPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-lucro-total').innerText = "R$ " + lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
