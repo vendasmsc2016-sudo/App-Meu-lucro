@@ -147,6 +147,12 @@
 
         <div id="estoque-screen" class="screen">
             <header><i class="fas fa-arrow-left" onclick="showScreen('home-screen')"></i><strong>Estoque</strong><i class="fas fa-plus" onclick="abrirCadastroProd()"></i></header>
+            <div class="card" style="margin-bottom: 5px;">
+                <div class="input-group" style="margin-bottom: 0; display: flex; align-items: center; background: var(--bg); border-radius: 8px; padding: 5px 15px;">
+                    <i class="fas fa-search" style="color: var(--text-light); margin-right: 10px;"></i>
+                    <input type="text" id="estoque-busca" placeholder="Pesquisar no estoque..." oninput="renderEstoque()" style="border: none; background: transparent; padding: 10px 0;">
+                </div>
+            </div>
             <div id="lista-estoque" style="padding: 10px;"></div>
         </div>
 
@@ -366,12 +372,22 @@
             showScreen('estoque-screen');
             document.getElementById('nav-estoque').classList.add('active');
             const lista = document.getElementById('lista-estoque');
-            lista.innerHTML = db.produtos.length === 0 ? "<p style='text-align:center; padding:20px;'>Vazio.</p>" : "";
-            db.produtos.forEach((p, i) => {
+            const busca = document.getElementById('estoque-busca').value.toLowerCase();
+            
+            // Ordena alfabeticamente e filtra por nome
+            const produtosFiltrados = db.produtos
+                .filter(p => p.nome.toLowerCase().includes(busca))
+                .sort((a, b) => a.nome.localeCompare(b.nome));
+
+            lista.innerHTML = produtosFiltrados.length === 0 ? "<p style='text-align:center; padding:20px;'>Nenhum item encontrado.</p>" : "";
+            
+            produtosFiltrados.forEach((p) => {
+                // Encontrar o índice original no db para funções de edição/remoção
+                const originalIndex = db.produtos.indexOf(p);
                 lista.innerHTML += `<div class="card row" style="align-items:center; margin: 8px 15px;">
                     <img src="${p.foto || ''}" style="width:45px; height:45px; border-radius:8px; object-fit:cover; background:#eee">
                     <div style="flex:1; margin-left:12px;"><strong>${p.nome}</strong><br><small>R$ ${p.venda.toFixed(2)}</small></div>
-                    <div style="display:flex; gap:15px;"><i class="fas fa-edit" style="color:var(--primary); padding:10px;" onclick="editarProd(${i})"></i><i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerProd(${i})"></i></div>
+                    <div style="display:flex; gap:15px;"><i class="fas fa-edit" style="color:var(--primary); padding:10px;" onclick="editarProd(${originalIndex})"></i><i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerProd(${originalIndex})"></i></div>
                 </div>`;
             });
         }
