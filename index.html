@@ -23,7 +23,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; transition: 0.2s; }
         body { background-color: var(--bg); color: var(--text); padding-bottom: 80px; min-height: 100vh; }
 
-        /* Estilos do Login e App */
         #auth-layer {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--card-bg); z-index: 9999; display: flex;
@@ -73,6 +72,9 @@
 
         .search-results { background: var(--card-bg); border-radius: 8px; max-height: 200px; overflow-y: auto; position: absolute; width: 100%; z-index: 50; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .search-item { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+        
+        /* Estilo para o botão de balança */
+        .btn-balanca { background: var(--primary); color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 18px; height: 48px; }
     </style>
 </head>
 <body id="app-body">
@@ -96,14 +98,8 @@
             <header><strong>Painel MSC</strong><i class="fas fa-cog" onclick="showScreen('config-screen')"></i></header>
             <div class="card" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white;">
                 <div style="display: flex; gap: 10px; justify-content: space-between;">
-                    <div>
-                        <span style="opacity: 0.8; font-size: 12px;">Faturamento Hoje</span>
-                        <h2 id="fat-hoje">R$ 0,00</h2>
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="opacity: 0.8; font-size: 12px;">Lucro Hoje</span>
-                        <h2 id="lucro-hoje">R$ 0,00</h2>
-                    </div>
+                    <div><span style="opacity: 0.8; font-size: 12px;">Faturamento Hoje</span><h2 id="fat-hoje">R$ 0,00</h2></div>
+                    <div style="text-align: right;"><span style="opacity: 0.8; font-size: 12px;">Lucro Hoje</span><h2 id="lucro-hoje">R$ 0,00</h2></div>
                 </div>
                 <hr style="margin: 10px 0; opacity: 0.2;">
                 <small>Total Acumulado: <span id="fat-total">R$ 0,00</span></small>
@@ -129,11 +125,11 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div><label>QTD</label><input type="number" id="v-qtd" value="1" oninput="recalcularVenda()"></div>
-                    <div><label>ACRÉSCIMO</label><input type="text" id="v-ajuste" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
+                    <div style="flex: 2;"><label id="label-qtd">QUANTIDADE</label><input type="number" id="v-qtd" value="1" step="0.001" oninput="recalcularVenda()"></div>
+                    <button class="btn-balanca" onclick="vendaPorValor()"><i class="fas fa-balance-scale"></i></button>
                 </div>
                 <div class="row" style="margin-top:10px">
-                    <div></div>
+                    <div><label>ACRÉSCIMO</label><input type="text" id="v-ajuste" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
                     <div><label>DESCONTO</label><input type="text" id="v-desconto" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
                 </div>
                 <div id="v-stats-lucro" class="hidden" style="text-align:center; padding:10px; font-size:13px; color:var(--primary)">
@@ -165,9 +161,16 @@
                     <input type="file" id="file-in" class="hidden" accept="image/*" onchange="previewImagem(this)">
                 </div>
                 <div class="input-group"><label>NOME</label><input type="text" id="p-nome"></div>
+                <div class="input-group">
+                    <label>UNIDADE DE MEDIDA</label>
+                    <select id="p-unidade">
+                        <option value="un">Unidade (UN)</option>
+                        <option value="kg">Quilo (KG)</option>
+                    </select>
+                </div>
                 <div class="row">
-                    <div><label>CUSTO</label><input type="text" id="p-custo" oninput="mask(this)"></div>
-                    <div><label>VENDA</label><input type="text" id="p-venda" oninput="mask(this)"></div>
+                    <div><label>CUSTO (UN/KG)</label><input type="text" id="p-custo" oninput="mask(this)"></div>
+                    <div><label>VENDA (UN/KG)</label><input type="text" id="p-venda" oninput="mask(this)"></div>
                 </div>
                 <button class="btn-main" style="margin-top:15px" onclick="salvarProduto()">Salvar Produto</button>
             </div>
@@ -178,10 +181,7 @@
             <div class="card">
                 <label>FILTRO PERÍODO</label>
                 <select id="rel-periodo" onchange="toggleRelPersonalizado()">
-                    <option value="hoje">Hoje</option>
-                    <option value="7dias">Últimos 7 dias</option>
-                    <option value="mes">Mês Atual</option>
-                    <option value="personalizado">Personalizado</option>
+                    <option value="hoje">Hoje</option><option value="7dias">Últimos 7 dias</option><option value="mes">Mês Atual</option><option value="personalizado">Personalizado</option>
                 </select>
                 <div id="rel-datas-personalizadas" class="hidden" style="margin-top: 10px;">
                     <div class="row">
@@ -190,8 +190,7 @@
                     </div>
                 </div>
                 <div class="input-group" style="margin-top: 10px; margin-bottom: 0;">
-                    <label>BUSCAR PRODUTO</label>
-                    <input type="text" id="rel-busca-prod" placeholder="Nome do produto..." oninput="renderRelatorio()">
+                    <label>BUSCAR PRODUTO</label><input type="text" id="rel-busca-prod" placeholder="Nome do produto..." oninput="renderRelatorio()">
                 </div>
             </div>
             <div class="card" style="display:flex; justify-content:space-between; text-align:center;">
@@ -204,51 +203,28 @@
 
         <div id="config-screen" class="screen">
             <header><i class="fas fa-arrow-left" onclick="showScreen('home-screen')"></i><strong>Ajustes</strong></header>
-            
             <div class="card">
                 <h3>Segurança</h3>
-                <div class="input-group" style="margin-top:10px">
-                    <label>SENHA ATUAL</label>
-                    <input type="password" id="s-atual" inputmode="numeric">
-                    <i class="fas fa-eye toggle-pass" onclick="toggleView('s-atual', this)"></i>
-                </div>
-                <div class="input-group">
-                    <label>NOVA SENHA (6 NÚMEROS)</label>
-                    <input type="password" id="s-nova" inputmode="numeric">
-                    <i class="fas fa-eye toggle-pass" onclick="toggleView('s-nova', this)"></i>
-                </div>
+                <div class="input-group" style="margin-top:10px"><label>SENHA ATUAL</label><input type="password" id="s-atual" inputmode="numeric"><i class="fas fa-eye toggle-pass" onclick="toggleView('s-atual', this)"></i></div>
+                <div class="input-group"><label>NOVA SENHA (6 NÚMEROS)</label><input type="password" id="s-nova" inputmode="numeric"><i class="fas fa-eye toggle-pass" onclick="toggleView('s-nova', this)"></i></div>
                 <button class="btn-main" onclick="trocarSenha()">Atualizar Senha</button>
             </div>
-
             <div class="card">
-                <h3>Backup do Comércio</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:15px;">Gere o código e cole no seu WhatsApp para não perder seus dados.</p>
-                <button class="btn-main" onclick="abrirBackupBox()"><i class="fas fa-sync"></i> GERAR CÓDIGO DE SEGURANÇA</button>
-                <hr style="margin: 20px 0; opacity: 0.1;">
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Para restaurar:</p>
-                <textarea id="area-restaurar" placeholder="Cole seu código JSON aqui..." rows="4" style="background: #f9f9f9; font-size:10px;"></textarea>
-                <button class="btn-outline" onclick="restaurarBackupBox()">RESTAURAR AGORA</button>
+                <h3>Backup</h3>
+                <button class="btn-main" onclick="abrirBackupBox()">GERAR CÓDIGO</button>
+                <textarea id="area-restaurar" placeholder="Cole seu código aqui..." rows="4" style="margin-top:10px; font-size:10px;"></textarea>
+                <button class="btn-outline" onclick="restaurarBackupBox()">RESTAURAR</button>
             </div>
-
             <div class="card">
                 <h3>Aparência</h3>
-                <button class="btn-outline" onclick="toggleDark()">🌓 Alternar Tema</button>
-                <div class="color-grid">
-                    <div class="color-opt" style="background:#2e7d32" onclick="setTema('theme-green')"></div>
-                    <div class="color-opt" style="background:#c62828" onclick="setTema('theme-red')"></div>
-                    <div class="color-opt" style="background:#1565c0" onclick="setTema('theme-blue')"></div>
-                </div>
+                <button class="btn-outline" onclick="toggleDark()">🌓 Tema</button>
+                <div class="color-grid"><div class="color-opt" style="background:#2e7d32" onclick="setTema('theme-green')"></div><div class="color-opt" style="background:#c62828" onclick="setTema('theme-red')"></div><div class="color-opt" style="background:#1565c0" onclick="setTema('theme-blue')"></div></div>
             </div>
-            <div style="padding:15px"><button class="btn-main" style="background:var(--text-light)" onclick="logout()">Sair da Conta</button></div>
+            <div style="padding:15px"><button class="btn-main" style="background:var(--text-light)" onclick="logout()">Sair</button></div>
         </div>
 
         <div id="backup-box-layer" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;">
-            <div class="card" style="width:100%; max-height:80%; overflow-y:auto;">
-                <h2 style="margin-bottom:10px;">Seu Backup</h2>
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Copie o texto abaixo e guarde no seu WhatsApp.</p>
-                <textarea id="texto-backup-gerado" readonly rows="10" style="background:#f5f5f5; font-family:monospace; font-size:10px; color:#000; word-break: break-all;" onclick="this.select()"></textarea>
-                <button class="btn-main" style="margin-top:15px;" onclick="document.getElementById('backup-box-layer').classList.add('hidden')">FECHAR</button>
-            </div>
+            <div class="card" style="width:100%; max-height:80%; overflow-y:auto;"><textarea id="texto-backup-gerado" readonly rows="10" style="font-size:10px;"></textarea><button class="btn-main" style="margin-top:15px;" onclick="document.getElementById('backup-box-layer').classList.add('hidden')">FECHAR</button></div>
         </div>
 
         <nav>
@@ -270,9 +246,7 @@
             if (!db.user || !db.logado) {
                 document.getElementById('auth-layer').classList.remove('hidden');
                 document.getElementById('main-app').classList.add('hidden');
-            } else {
-                iniciarSistema();
-            }
+            } else { iniciarSistema(); }
         };
 
         function autenticar() {
@@ -280,26 +254,17 @@
             const p = document.getElementById('auth-pass').value;
             if(!db.user) {
                 if(!e.includes('@') || p.length !== 6) return alert("E-mail e senha de 6 números!");
-                db.user = { email: e, password: p };
-                db.logado = true;
-                salvarDB(); iniciarSistema();
+                db.user = { email: e, password: p }; db.logado = true; salvarDB(); iniciarSistema();
             } else {
-                if(e === db.user.email && p === db.user.password) {
-                    db.logado = true;
-                    salvarDB(); iniciarSistema();
-                } else { alert("Dados incorretos!"); }
+                if(e === db.user.email && p === db.user.password) { db.logado = true; salvarDB(); iniciarSistema(); } 
+                else { alert("Dados incorretos!"); }
             }
         }
 
         function recuperarSenha() {
-            if (!db.user) return alert("Nenhum usuário cadastrado neste dispositivo.");
-            const emailConfirm = prompt("Para recuperar sua senha, confirme o e-mail cadastrado:");
-            if (emailConfirm === null) return;
-            if (emailConfirm.toLowerCase().trim() === db.user.email.toLowerCase().trim()) {
-                alert("E-mail confirmado com sucesso!\n\nSua senha atual é: " + db.user.password);
-            } else {
-                alert("E-mail incorreto! Não foi possível recuperar a senha.");
-            }
+            if (!db.user) return alert("Sem cadastro.");
+            const emailConfirm = prompt("Confirme o e-mail:");
+            if (emailConfirm && emailConfirm.toLowerCase().trim() === db.user.email.toLowerCase().trim()) alert("Senha: " + db.user.password);
         }
 
         function iniciarSistema() {
@@ -308,44 +273,10 @@
             atualizarHome();
         }
 
-        function abrirBackupBox() {
-            let backupLeve = JSON.parse(JSON.stringify(db));
-            backupLeve.produtos.forEach(p => p.foto = ""); 
-            const dataStr = JSON.stringify(backupLeve);
-            document.getElementById('texto-backup-gerado').value = dataStr;
-            document.getElementById('backup-box-layer').classList.remove('hidden');
-        }
-
-        function restaurarBackupBox() {
-            const code = document.getElementById('area-restaurar').value.trim();
-            if(!code) return alert("Cole o código aqui!");
-            try {
-                const parsed = JSON.parse(code);
-                if(parsed.user && confirm("Isso vai restaurar suas vendas e produtos. Continuar?")) {
-                    db = parsed;
-                    db.logado = false;
-                    salvarDB();
-                    alert("Dados restaurados! Entre novamente.");
-                    location.reload();
-                }
-            } catch(e) { alert("Código inválido!"); }
-        }
-
-        function mask(i) {
-            let v = i.value.replace(/\D/g,'');
-            v = (v/100).toFixed(2).replace(".", ",");
-            v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
-            i.value = v;
-        }
-
-        function conv(v) { 
-            if (!v) return 0;
-            return parseFloat(v.toString().replace(/\./g, '').replace(',', '.')) || 0; 
-        }
-
         function salvarDB() { localStorage.setItem('msc_pro_master_db', JSON.stringify(db)); }
-        
         function logout() { db.logado = false; salvarDB(); location.reload(); }
+        function mask(i) { let v = i.value.replace(/\D/g,''); v = (v/100).toFixed(2).replace(".", ","); v = v.replace(/(\d)(\d{3}),/g, "$1.$2,"); i.value = v; }
+        function conv(v) { if (!v) return 0; return parseFloat(v.toString().replace(/\./g, '').replace(',', '.')) || 0; }
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -355,17 +286,14 @@
         }
 
         function atualizarHome() {
-            let fat_hoje = 0, lucro_hoje = 0, total_fat = 0;
+            let fat_h = 0, lucro_h = 0, total_f = 0;
             db.vendas.forEach(v => {
-                if(new Date(v.data).toDateString() === new Date().toDateString()) {
-                    fat_hoje += v.valor;
-                    lucro_hoje += v.lucro;
-                }
-                total_fat += v.valor;
+                if(new Date(v.data).toDateString() === new Date().toDateString()) { fat_h += v.valor; lucro_h += v.lucro; }
+                total_f += v.valor;
             });
-            document.getElementById('fat-hoje').innerText = "R$ " + fat_hoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-            document.getElementById('lucro-hoje').innerText = "R$ " + lucro_hoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-            document.getElementById('fat-total').innerText = "R$ " + total_fat.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('fat-hoje').innerText = "R$ " + fat_h.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('lucro-hoje').innerText = "R$ " + lucro_h.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('fat-total').innerText = "R$ " + total_f.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         }
 
         function renderEstoque() {
@@ -373,20 +301,13 @@
             document.getElementById('nav-estoque').classList.add('active');
             const lista = document.getElementById('lista-estoque');
             const busca = document.getElementById('estoque-busca').value.toLowerCase();
-            
-            // Ordena alfabeticamente e filtra por nome
-            const produtosFiltrados = db.produtos
-                .filter(p => p.nome.toLowerCase().includes(busca))
-                .sort((a, b) => a.nome.localeCompare(b.nome));
-
-            lista.innerHTML = produtosFiltrados.length === 0 ? "<p style='text-align:center; padding:20px;'>Nenhum item encontrado.</p>" : "";
-            
+            const produtosFiltrados = db.produtos.filter(p => p.nome.toLowerCase().includes(busca)).sort((a, b) => a.nome.localeCompare(b.nome));
+            lista.innerHTML = produtosFiltrados.length === 0 ? "<p style='text-align:center; padding:20px;'>Vazio.</p>" : "";
             produtosFiltrados.forEach((p) => {
-                // Encontrar o índice original no db para funções de edição/remoção
                 const originalIndex = db.produtos.indexOf(p);
                 lista.innerHTML += `<div class="card row" style="align-items:center; margin: 8px 15px;">
                     <img src="${p.foto || ''}" style="width:45px; height:45px; border-radius:8px; object-fit:cover; background:#eee">
-                    <div style="flex:1; margin-left:12px;"><strong>${p.nome}</strong><br><small>R$ ${p.venda.toFixed(2)}</small></div>
+                    <div style="flex:1; margin-left:12px;"><strong>${p.nome}</strong><br><small>R$ ${p.venda.toFixed(2)} (${p.unidade || 'un'})</small></div>
                     <div style="display:flex; gap:15px;"><i class="fas fa-edit" style="color:var(--primary); padding:10px;" onclick="editarProd(${originalIndex})"></i><i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerProd(${originalIndex})"></i></div>
                 </div>`;
             });
@@ -394,79 +315,79 @@
 
         function abrirCadastroProd() {
             editIdx = null; base64Img = "";
-            document.getElementById('p-nome').value = "";
-            document.getElementById('p-custo').value = "";
-            document.getElementById('p-venda').value = "";
-            document.getElementById('p-preview').classList.add('hidden');
-            document.getElementById('icon-cam').classList.remove('hidden');
+            document.getElementById('p-nome').value = ""; document.getElementById('p-custo').value = "";
+            document.getElementById('p-venda').value = ""; document.getElementById('p-unidade').value = "un";
+            document.getElementById('p-preview').classList.add('hidden'); document.getElementById('icon-cam').classList.remove('hidden');
             showScreen('prod-form-screen');
         }
 
         function salvarProduto() {
             const n = document.getElementById('p-nome').value;
+            const u = document.getElementById('p-unidade').value;
             const c = conv(document.getElementById('p-custo').value);
             const v = conv(document.getElementById('p-venda').value);
-            if(!n || v <= 0) return alert("Preencha os campos!");
-            const pData = { nome: n, custo: c, venda: v, foto: base64Img };
-            if(editIdx !== null) db.produtos[editIdx] = pData;
-            else db.produtos.push(pData);
+            if(!n || v <= 0) return alert("Preencha!");
+            const pData = { nome: n, unidade: u, custo: c, venda: v, foto: base64Img };
+            if(editIdx !== null) db.produtos[editIdx] = pData; else db.produtos.push(pData);
             salvarDB(); renderEstoque();
         }
 
         function editarProd(i) {
             editIdx = i; const p = db.produtos[i];
             document.getElementById('p-nome').value = p.nome;
+            document.getElementById('p-unidade').value = p.unidade || 'un';
             document.getElementById('p-custo').value = p.custo.toFixed(2).replace('.', ',');
             document.getElementById('p-venda').value = p.venda.toFixed(2).replace('.', ',');
             mask(document.getElementById('p-custo')); mask(document.getElementById('p-venda'));
             base64Img = p.foto || "";
-            if(base64Img) {
-                document.getElementById('p-preview').src = base64Img;
-                document.getElementById('p-preview').classList.remove('hidden');
-                document.getElementById('icon-cam').classList.add('hidden');
-            }
+            if(base64Img) { document.getElementById('p-preview').src = base64Img; document.getElementById('p-preview').classList.remove('hidden'); document.getElementById('icon-cam').classList.add('hidden'); }
             showScreen('prod-form-screen');
         }
 
-        function removerProd(i) { if(confirm("Remover item?")) { db.produtos.splice(i,1); salvarDB(); renderEstoque(); } }
+        function removerProd(i) { if(confirm("Remover?")) { db.produtos.splice(i,1); salvarDB(); renderEstoque(); } }
 
         function abrirVenda() {
             prodSel = null; document.getElementById('v-info').classList.add('hidden');
-            document.getElementById('v-qtd').value = 1; document.getElementById('v-ajuste').value = "";
-            document.getElementById('v-desconto').value = ""; document.getElementById('v-total-txt').innerText = "R$ 0,00";
-            document.getElementById('v-busca').value = ""; 
-            document.getElementById('v-stats-lucro').classList.add('hidden');
-            showScreen('venda-screen');
+            document.getElementById('v-qtd').value = 1; document.getElementById('label-qtd').innerText = "QUANTIDADE";
+            document.getElementById('v-ajuste').value = ""; document.getElementById('v-desconto').value = "";
+            document.getElementById('v-total-txt').innerText = "R$ 0,00"; document.getElementById('v-busca').value = "";
+            document.getElementById('v-stats-lucro').classList.add('hidden'); showScreen('venda-screen');
         }
 
         function filtrarItensVenda(t) {
-            const res = document.getElementById('v-resultados'); res.innerHTML = "";
-            if(!t) return;
+            const res = document.getElementById('v-resultados'); res.innerHTML = ""; if(!t) return;
             db.produtos.filter(p => p.nome.toLowerCase().includes(t.toLowerCase())).forEach(p => {
-                const item = document.createElement('div');
-                item.className = "search-item"; item.innerText = p.nome;
+                const item = document.createElement('div'); item.className = "search-item"; item.innerText = p.nome + " (" + (p.unidade || 'un') + ")";
                 item.onclick = () => {
                     prodSel = p; document.getElementById('v-nome').innerText = p.nome;
                     document.getElementById('v-img').src = p.foto || "";
-                    document.getElementById('v-info').classList.remove('hidden');
-                    res.innerHTML = ""; recalcularVenda();
+                    document.getElementById('label-qtd').innerText = (p.unidade === 'kg') ? "PESO (KG)" : "QUANTIDADE";
+                    document.getElementById('v-info').classList.remove('hidden'); res.innerHTML = ""; recalcularVenda();
                 };
                 res.appendChild(item);
             });
         }
 
+        function vendaPorValor() {
+            if(!prodSel) return alert("Selecione um produto primeiro!");
+            const valorDesejado = prompt("Digite o VALOR EM R$ que o cliente quer levar:");
+            if(valorDesejado) {
+                const v = conv(valorDesejado.replace('R$', '').trim());
+                const pesoCalculado = v / prodSel.venda;
+                document.getElementById('v-qtd').value = pesoCalculado.toFixed(3);
+                recalcularVenda();
+            }
+        }
+
         function recalcularVenda() {
             if(!prodSel) return;
-            const q = parseInt(document.getElementById('v-qtd').value) || 0;
+            const q = parseFloat(document.getElementById('v-qtd').value) || 0;
             const a = conv(document.getElementById('v-ajuste').value);
             const d = conv(document.getElementById('v-desconto').value);
-            
             const totalFinal = Math.max(0, (prodSel.venda * q) + a - d);
-            const custoTotal = prodSel.custo * q;
-            const lucroReal = totalFinal - custoTotal;
-            
-            const margem = custoTotal > 0 ? ((lucroReal / custoTotal) * 100).toFixed(1) : 0;
-
+            const custoProporcional = prodSel.custo * q;
+            const lucroReal = totalFinal - custoProporcional;
+            const margem = custoProporcional > 0 ? ((lucroReal / custoProporcional) * 100).toFixed(1) : 0;
             document.getElementById('v-total-txt').innerText = "R$ " + totalFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('v-lucro-real').innerText = "Lucro: R$ " + lucroReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('v-lucro-perc').innerText = "Margem: " + margem + "%";
@@ -474,29 +395,20 @@
         }
 
         function finalizarVenda() {
-            if(!prodSel) return alert("Selecione um produto!");
-            const q = parseInt(document.getElementById('v-qtd').value) || 0;
+            if(!prodSel) return alert("Selecione!");
+            const q = parseFloat(document.getElementById('v-qtd').value) || 0;
             const a = conv(document.getElementById('v-ajuste').value);
             const d = conv(document.getElementById('v-desconto').value);
             const totalFinal = Math.max(0, (prodSel.venda * q) + a - d);
             const custoTotal = prodSel.custo * q;
-            db.vendas.push({ 
-                id: Date.now(), 
-                nome: prodSel.nome, 
-                qtd: q,
-                valor: totalFinal, 
-                custo: custoTotal,
-                lucro: totalFinal - custoTotal, 
-                data: new Date().toISOString() 
-            });
-            salvarDB(); alert("Venda finalizada!"); showScreen('home-screen'); atualizarHome();
+            db.vendas.push({ id: Date.now(), nome: prodSel.nome, qtd: q, valor: totalFinal, custo: custoTotal, lucro: totalFinal - custoTotal, data: new Date().toISOString(), unidade: prodSel.unidade || 'un' });
+            salvarDB(); alert("Venda OK!"); showScreen('home-screen'); atualizarHome();
         }
 
         function toggleRelPersonalizado() {
-            const modo = document.getElementById('rel-periodo').value;
-            const box = document.getElementById('rel-datas-personalizadas');
-            if(modo === 'personalizado') box.classList.remove('hidden');
-            else box.classList.add('hidden');
+            const m = document.getElementById('rel-periodo').value;
+            const b = document.getElementById('rel-datas-personalizadas');
+            if(m === 'personalizado') b.classList.remove('hidden'); else b.classList.add('hidden');
             renderRelatorio();
         }
 
@@ -506,105 +418,49 @@
             const modo = document.getElementById('rel-periodo').value;
             const busca = document.getElementById('rel-busca-prod').value.toLowerCase();
             const lista = document.getElementById('rel-lista'); lista.innerHTML = "";
-            let faturamento = 0, lucro = 0, custoTotalPeriodo = 0;
+            let faturamento = 0, lucro = 0, custoT = 0;
 
             const filtrados = db.vendas.filter(v => {
-                const dv = new Date(v.data);
-                const hoje = new Date();
-                let passaData = true;
-                if(modo === 'hoje') passaData = dv.toDateString() === hoje.toDateString();
-                else if(modo === '7dias') passaData = (hoje - dv) / 86400000 <= 7;
-                else if(modo === 'mes') passaData = dv.getMonth() === hoje.getMonth() && dv.getFullYear() === hoje.getFullYear();
+                const dv = new Date(v.data); const hoje = new Date(); let pData = true;
+                if(modo === 'hoje') pData = dv.toDateString() === hoje.toDateString();
+                else if(modo === '7dias') pData = (hoje - dv) / 86400000 <= 7;
+                else if(modo === 'mes') pData = dv.getMonth() === hoje.getMonth() && dv.getFullYear() === hoje.getFullYear();
                 else if(modo === 'personalizado') {
-                    const iniVal = document.getElementById('rel-data-ini').value;
-                    const fimVal = document.getElementById('rel-data-fim').value;
-                    if(iniVal && fimVal) {
-                        const dIni = new Date(iniVal + "T00:00:00");
-                        const dFim = new Date(fimVal + "T23:59:59");
-                        passaData = dv >= dIni && dv <= dFim;
-                    }
+                    const i = document.getElementById('rel-data-ini').value; const f = document.getElementById('rel-data-fim').value;
+                    if(i && f) { const dI = new Date(i + "T00:00:00"); const dF = new Date(f + "T23:59:59"); pData = dv >= dI && dv <= dF; }
                 }
-                const passaNome = v.nome.toLowerCase().includes(busca);
-                return passaData && passaNome;
+                return pData && v.nome.toLowerCase().includes(busca);
             });
             
-            [...filtrados].reverse().forEach((v) => {
-                faturamento += v.valor; 
-                lucro += v.lucro;
-                const custoVenda = (v.custo || 0);
-                custoTotalPeriodo += custoVenda;
+            filtrados.reverse().forEach((v) => {
+                faturamento += v.valor; lucro += v.lucro; custoT += (v.custo || 0);
                 const dObj = new Date(v.data);
-                const dataFormatada = dObj.toLocaleDateString() + " " + dObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const margemItem = (custoVenda > 0) ? ((v.lucro / custoVenda) * 100).toFixed(1) : "0";
-                const qtdTexto = v.qtd ? ` (x${v.qtd})` : "";
+                const dataF = dObj.toLocaleDateString() + " " + dObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const margemI = (v.custo > 0) ? ((v.lucro / v.custo) * 100).toFixed(1) : "0";
+                const qtdTexto = v.unidade === 'kg' ? ` (${v.qtd.toFixed(3)}kg)` : ` (x${v.qtd})`;
 
                 lista.innerHTML += `<div class="card row" style="margin:8px 0; font-size:13px; align-items:center;">
-                    <div style="flex:1">
-                        <strong>${v.nome}${qtdTexto}</strong><br>
-                        <small>${dataFormatada}</small><br>
-                        <small style="color:var(--text-light)">Custo: R$ ${custoVenda.toFixed(2)}</small>
-                    </div>
-                    <div style="text-align:right; margin-right:10px;">
-                        R$ ${v.valor.toFixed(2)}<br>
-                        <small style="color:var(--primary)">Lucro: R$ ${v.lucro.toFixed(2)}</small><br>
-                        <small style="color:var(--primary); font-size:10px;">Margem: ${margemItem}%</small>
-                    </div>
+                    <div style="flex:1"><strong>${v.nome}${qtdTexto}</strong><br><small>${dataF}</small><br><small>Custo: R$ ${v.custo.toFixed(2)}</small></div>
+                    <div style="text-align:right; margin-right:10px;">R$ ${v.valor.toFixed(2)}<br><small style="color:var(--primary)">Lucro: R$ ${v.lucro.toFixed(2)}</small><br><small style="color:var(--primary); font-size:10px;">Margem: ${margemI}%</small></div>
                     <i class="fas fa-trash" style="color:var(--danger); padding:10px;" onclick="removerVenda(${v.id})"></i>
                 </div>`;
             });
-
-            const margemMedia = custoTotalPeriodo > 0 ? ((lucro / custoTotalPeriodo) * 100).toFixed(1) : "0";
+            const mMedia = custoT > 0 ? ((lucro / custoT) * 100).toFixed(1) : "0";
             document.getElementById('rel-fat-total').innerText = "R$ " + faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-            document.getElementById('rel-custo-total').innerText = "R$ " + custoTotalPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('rel-custo-total').innerText = "R$ " + custoT.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-lucro-total').innerText = "R$ " + lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-            document.getElementById('rel-margem-total').innerText = "(" + margemMedia + "%)";
+            document.getElementById('rel-margem-total').innerText = "(" + mMedia + "%)";
         }
 
-        function removerVenda(id) {
-            if(confirm("Deseja excluir este registro de venda?")) {
-                db.vendas = db.vendas.filter(v => v.id !== id);
-                salvarDB();
-                renderRelatorio();
-                atualizarHome();
-            }
-        }
-
-        function toggleView(id, btn) {
-            const input = document.getElementById(id);
-            if (input.type === "password") {
-                input.type = "text";
-                btn.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                input.type = "password";
-                btn.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-
-        function trocarSenha() {
-            const a = document.getElementById('s-atual').value;
-            const n = document.getElementById('s-nova').value;
-            if(a === db.user.password && n.length === 6) { 
-                db.user.password = n; salvarDB(); alert("Senha alterada!");
-            } else { alert("Dados incorretos!"); }
-        }
-
-        function previewImagem(input) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                base64Img = e.target.result;
-                document.getElementById('p-preview').src = base64Img;
-                document.getElementById('p-preview').classList.remove('hidden');
-                document.getElementById('icon-cam').classList.add('hidden');
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-
+        function removerVenda(id) { if(confirm("Excluir?")) { db.vendas = db.vendas.filter(v => v.id !== id); salvarDB(); renderRelatorio(); atualizarHome(); } }
+        function toggleView(id, btn) { const input = document.getElementById(id); if (input.type === "password") { input.type = "text"; btn.classList.replace('fa-eye', 'fa-eye-slash'); } else { input.type = "password"; btn.classList.replace('fa-eye-slash', 'fa-eye'); } }
+        function trocarSenha() { const a = document.getElementById('s-atual').value; const n = document.getElementById('s-nova').value; if(a === db.user.password && n.length === 6) { db.user.password = n; salvarDB(); alert("OK!"); } else { alert("Erro!"); } }
+        function previewImagem(input) { const reader = new FileReader(); reader.onload = e => { base64Img = e.target.result; document.getElementById('p-preview').src = base64Img; document.getElementById('p-preview').classList.remove('hidden'); document.getElementById('icon-cam').classList.add('hidden'); }; reader.readAsDataURL(input.files[0]); }
         function setTema(t) { db.theme = t; salvarDB(); aplicarLayout(); }
         function toggleDark() { db.dark = !db.dark; salvarDB(); aplicarLayout(); }
-        function aplicarLayout() {
-            document.body.className = db.theme;
-            db.dark ? document.body.classList.add('dark-mode') : document.body.classList.remove('dark-mode');
-        }
+        function aplicarLayout() { document.body.className = db.theme; db.dark ? document.body.classList.add('dark-mode') : document.body.classList.remove('dark-mode'); }
+        function abrirBackupBox() { let bL = JSON.parse(JSON.stringify(db)); bL.produtos.forEach(p => p.foto = ""); document.getElementById('texto-backup-gerado').value = JSON.stringify(bL); document.getElementById('backup-box-layer').classList.remove('hidden'); }
+        function restaurarBackupBox() { const c = document.getElementById('area-restaurar').value.trim(); if(!c) return; try { const p = JSON.parse(c); if(confirm("Restaurar?")) { db = p; db.logado = false; salvarDB(); location.reload(); } } catch(e) { alert("Erro!"); } }
     </script>
 </body>
 </html>
