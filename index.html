@@ -170,7 +170,7 @@
         <div id="rel-screen" class="screen">
             <header><strong>Relatórios</strong></header>
             <div class="card">
-                <label>FILTRO</label>
+                <label>FILTRO PERÍODO</label>
                 <select id="rel-periodo" onchange="toggleRelPersonalizado()">
                     <option value="hoje">Hoje</option>
                     <option value="7dias">Últimos 7 dias</option>
@@ -182,6 +182,10 @@
                         <div><label>INÍCIO</label><input type="date" id="rel-data-ini" onchange="renderRelatorio()"></div>
                         <div><label>FIM</label><input type="date" id="rel-data-fim" onchange="renderRelatorio()"></div>
                     </div>
+                </div>
+                <div class="input-group" style="margin-top: 10px; margin-bottom: 0;">
+                    <label>BUSCAR PRODUTO</label>
+                    <input type="text" id="rel-busca-prod" placeholder="Nome do produto..." oninput="renderRelatorio()">
                 </div>
             </div>
             <div class="card" style="display:flex; justify-content:space-between; text-align:center;">
@@ -483,6 +487,7 @@
             showScreen('rel-screen');
             document.getElementById('nav-rel').classList.add('active');
             const modo = document.getElementById('rel-periodo').value;
+            const busca = document.getElementById('rel-busca-prod').value.toLowerCase();
             const lista = document.getElementById('rel-lista'); lista.innerHTML = "";
             let faturamento = 0, lucro = 0, custoTotalPeriodo = 0;
 
@@ -490,18 +495,25 @@
                 const dv = new Date(v.data);
                 const hoje = new Date();
                 
-                if(modo === 'hoje') return dv.toDateString() === hoje.toDateString();
-                if(modo === '7dias') return (hoje - dv) / 86400000 <= 7;
-                if(modo === 'mes') return dv.getMonth() === hoje.getMonth() && dv.getFullYear() === hoje.getFullYear();
-                if(modo === 'personalizado') {
+                // Filtro de Período
+                let passaData = true;
+                if(modo === 'hoje') passaData = dv.toDateString() === hoje.toDateString();
+                else if(modo === '7dias') passaData = (hoje - dv) / 86400000 <= 7;
+                else if(modo === 'mes') passaData = dv.getMonth() === hoje.getMonth() && dv.getFullYear() === hoje.getFullYear();
+                else if(modo === 'personalizado') {
                     const iniVal = document.getElementById('rel-data-ini').value;
                     const fimVal = document.getElementById('rel-data-fim').value;
-                    if(!iniVal || !fimVal) return true;
-                    const dIni = new Date(iniVal + "T00:00:00");
-                    const dFim = new Date(fimVal + "T23:59:59");
-                    return dv >= dIni && dv <= dFim;
+                    if(iniVal && fimVal) {
+                        const dIni = new Date(iniVal + "T00:00:00");
+                        const dFim = new Date(fimVal + "T23:59:59");
+                        passaData = dv >= dIni && dv <= dFim;
+                    }
                 }
-                return true;
+
+                // Filtro de Nome de Produto
+                const passaNome = v.nome.toLowerCase().includes(busca);
+
+                return passaData && passaNome;
             });
             
             [...filtrados].reverse().forEach((v) => {
