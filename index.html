@@ -12,9 +12,13 @@
             --border: #ddd; --danger: #d32f2f;
         }
 
+        /* Temas de Cores */
         body.theme-green { --primary: #2e7d32; --accent: #4caf50; }
         body.theme-red { --primary: #c62828; --accent: #ff5252; }
         body.theme-blue { --primary: #1565c0; --accent: #2196f3; }
+        body.theme-orange { --primary: #ef6c00; --accent: #ff9800; }
+        body.theme-purple { --primary: #6a1b9a; --accent: #9c27b0; }
+        body.theme-yellow { --primary: #fdd835; --accent: #fff176; }
 
         body.dark-mode {
             --bg: #121212; --card-bg: #1e1e1e; --text: #e0e0e0; --text-light: #b0b0b0; --border: #333;
@@ -52,9 +56,9 @@
         .card { background: var(--card-bg); margin: 15px; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
         nav { position: fixed; bottom: 0; width: 100%; background: var(--card-bg); display: flex; border-top: 1px solid var(--border); z-index: 100; }
-        .nav-item { flex: 1; text-align: center; padding: 12px; color: var(--text-light); font-size: 11px; cursor: pointer; }
+        .nav-item { flex: 1; text-align: center; padding: 12px; color: var(--text-light); font-size: 10px; cursor: pointer; }
         .nav-item.active { color: var(--primary); }
-        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+        .nav-item i { font-size: 18px; margin-bottom: 4px; }
 
         .screen { display: none; }
         .screen.active { display: block; }
@@ -74,6 +78,12 @@
         .search-item { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
         
         .btn-balanca { background: var(--primary); color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 18px; height: 48px; }
+
+        .chart-container { display: flex; align-items: flex-end; justify-content: space-between; height: 200px; padding: 10px 0; margin-top: 30px; border-bottom: 2px solid var(--border); }
+        .chart-bar-wrapper { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+        .chart-bar { width: 70%; border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
+        .chart-label { font-size: 8px; text-align: center; color: var(--text-light); font-weight: bold; margin-top: 5px; line-height: 1.1; }
+        .chart-value { font-size: 7px; position: absolute; top: -15px; width: 140%; left: -20%; text-align: center; font-weight: bold; white-space: nowrap; }
     </style>
 </head>
 <body id="app-body">
@@ -200,6 +210,29 @@
             <div id="rel-lista" style="padding: 0 15px;"></div>
         </div>
 
+        <div id="chart-screen" class="screen">
+            <header><strong>Gráficos de Lucro</strong></header>
+            <div class="card">
+                <div class="row" style="margin-bottom: 10px;">
+                    <div>
+                        <label>VISUALIZAÇÃO</label>
+                        <select id="chart-type" onchange="renderGraficos()">
+                            <option value="semanal">Semanal</option>
+                            <option value="mensal">Mensal (Ano)</option>
+                        </select>
+                    </div>
+                    <div id="chart-ano-div" class="hidden">
+                        <label>ANO</label>
+                        <select id="chart-ano" onchange="renderGraficos()"></select>
+                    </div>
+                </div>
+                <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--primary);"><i class="fas fa-chart-bar"></i> <span id="chart-title">Lucro por Dia</span></h3>
+                <p id="chart-info" style="font-size: 11px; color: var(--text-light); margin-bottom: 5px;"></p>
+                <div class="chart-container" id="chart-bars"></div>
+            </div>
+            <div id="chart-details" style="padding: 0 15px;"></div>
+        </div>
+
         <div id="config-screen" class="screen">
             <header><i class="fas fa-arrow-left" onclick="showScreen('home-screen')"></i><strong>Ajustes</strong></header>
             <div class="card">
@@ -217,7 +250,14 @@
             <div class="card">
                 <h3>Aparência</h3>
                 <button class="btn-outline" onclick="toggleDark()">🌓 Tema</button>
-                <div class="color-grid"><div class="color-opt" style="background:#2e7d32" onclick="setTema('theme-green')"></div><div class="color-opt" style="background:#c62828" onclick="setTema('theme-red')"></div><div class="color-opt" style="background:#1565c0" onclick="setTema('theme-blue')"></div></div>
+                <div class="color-grid">
+                    <div class="color-opt" style="background:#2e7d32" onclick="setTema('theme-green')"></div>
+                    <div class="color-opt" style="background:#c62828" onclick="setTema('theme-red')"></div>
+                    <div class="color-opt" style="background:#1565c0" onclick="setTema('theme-blue')"></div>
+                    <div class="color-opt" style="background:#ef6c00" onclick="setTema('theme-orange')"></div>
+                    <div class="color-opt" style="background:#6a1b9a" onclick="setTema('theme-purple')"></div>
+                    <div class="color-opt" style="background:#fdd835" onclick="setTema('theme-yellow')"></div>
+                </div>
             </div>
             <div style="padding:15px"><button class="btn-main" style="background:var(--text-light)" onclick="logout()">Sair</button></div>
         </div>
@@ -229,7 +269,8 @@
         <nav>
             <div class="nav-item active" id="nav-home" onclick="showScreen('home-screen')"><i class="fas fa-home"></i><br>Início</div>
             <div class="nav-item" id="nav-estoque" onclick="renderEstoque()"><i class="fas fa-boxes"></i><br>Estoque</div>
-            <div class="nav-item" id="nav-rel" onclick="renderRelatorio()"><i class="fas fa-chart-line"></i><br>Relatórios</div>
+            <div class="nav-item" id="nav-rel" onclick="renderRelatorio()"><i class="fas fa-chart-line"></i><br>Relat.</div>
+            <div class="nav-item" id="nav-chart" onclick="renderGraficos()"><i class="fas fa-chart-bar"></i><br>Gráficos</div>
         </nav>
     </div>
 
@@ -270,6 +311,17 @@
             document.getElementById('auth-layer').classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             atualizarHome();
+            carregarAnosGrafico();
+        }
+
+        function carregarAnosGrafico() {
+            const selAno = document.getElementById('chart-ano');
+            selAno.innerHTML = "";
+            const anosUnicos = [...new Set(db.vendas.map(v => new Date(v.data).getFullYear()))];
+            if(anosUnicos.length === 0) anosUnicos.push(new Date().getFullYear());
+            anosUnicos.sort((a,b) => b-a).forEach(ano => {
+                selAno.innerHTML += `<option value="${ano}">${ano}</option>`;
+            });
         }
 
         function salvarDB() { localStorage.setItem('msc_pro_master_db', JSON.stringify(db)); }
@@ -282,6 +334,9 @@
             document.getElementById(id).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(ni => ni.classList.remove('active'));
             if(id === 'home-screen') document.getElementById('nav-home').classList.add('active');
+            if(id === 'estoque-screen') document.getElementById('nav-estoque').classList.add('active');
+            if(id === 'rel-screen') document.getElementById('nav-rel').classList.add('active');
+            if(id === 'chart-screen') document.getElementById('nav-chart').classList.add('active');
         }
 
         function atualizarHome() {
@@ -297,7 +352,6 @@
 
         function renderEstoque() {
             showScreen('estoque-screen');
-            document.getElementById('nav-estoque').classList.add('active');
             const lista = document.getElementById('lista-estoque');
             const busca = document.getElementById('estoque-busca').value.toLowerCase();
             const produtosFiltrados = db.produtos.filter(p => p.nome.toLowerCase().includes(busca)).sort((a, b) => a.nome.localeCompare(b.nome));
@@ -413,7 +467,6 @@
 
         function renderRelatorio() {
             showScreen('rel-screen');
-            document.getElementById('nav-rel').classList.add('active');
             const modo = document.getElementById('rel-periodo').value;
             const busca = document.getElementById('rel-busca-prod').value.toLowerCase();
             const lista = document.getElementById('rel-lista'); lista.innerHTML = "";
@@ -451,7 +504,84 @@
             document.getElementById('rel-margem-total').innerText = "(" + mMedia + "%)";
         }
 
-        function removerVenda(id) { if(confirm("Excluir?")) { db.vendas = db.vendas.filter(v => v.id !== id); salvarDB(); renderRelatorio(); atualizarHome(); } }
+        function renderGraficos() {
+            showScreen('chart-screen');
+            const container = document.getElementById('chart-bars');
+            const details = document.getElementById('chart-details');
+            const type = document.getElementById('chart-type').value;
+            const anoDiv = document.getElementById('chart-ano-div');
+            const title = document.getElementById('chart-title');
+            const info = document.getElementById('chart-info');
+            
+            container.innerHTML = ""; details.innerHTML = "";
+            let maxLucro = 1; 
+            let dadosParaGrafico = [];
+
+            if(type === 'semanal') {
+                anoDiv.classList.add('hidden');
+                title.innerText = "Lucro por Dia (Semana)";
+                const hoje = new Date();
+                const diaAtual = hoje.getDay(); 
+                const diff = hoje.getDate() - (diaAtual === 0 ? 6 : diaAtual - 1);
+                const segunda = new Date(new Date(hoje).setDate(diff));
+                const nomesDias = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+                for(let i = 0; i < 7; i++) {
+                    let d = new Date(segunda); d.setDate(segunda.getDate() + i);
+                    let dataString = d.toDateString();
+                    let lucroDia = 0, custoDia = 0;
+                    db.vendas.forEach(v => { if(new Date(v.data).toDateString() === dataString) { lucroDia += v.lucro; custoDia += (v.custo || 0); } });
+                    if(lucroDia > maxLucro) maxLucro = lucroDia;
+                    dadosParaGrafico.push({ label: nomesDias[i], sub: d.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}), lucro: lucroDia, custo: custoDia });
+                }
+                info.innerText = "Semana de " + dadosParaGrafico[0].sub + " a " + dadosParaGrafico[6].sub;
+            } else {
+                anoDiv.classList.remove('hidden');
+                const anoSel = document.getElementById('chart-ano').value;
+                title.innerText = "Lucro Mensal em " + anoSel;
+                const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                
+                for(let i = 0; i < 12; i++) {
+                    let lucroMes = 0, custoMes = 0;
+                    db.vendas.forEach(v => {
+                        const dv = new Date(v.data);
+                        if(dv.getFullYear() == anoSel && dv.getMonth() == i) { lucroMes += v.lucro; custoMes += (v.custo || 0); }
+                    });
+                    if(lucroMes > maxLucro) maxLucro = lucroMes;
+                    dadosParaGrafico.push({ label: nomesMeses[i], sub: anoSel, lucro: lucroMes, custo: custoMes });
+                }
+                info.innerText = "Comparativo de lucro por meses do ano";
+            }
+
+            dadosParaGrafico.forEach(item => {
+                const altura = (item.lucro / maxLucro) * 100;
+                let corBarra = "var(--primary)";
+                if (item.lucro <= 0) corBarra = "#ccc";
+                else if (item.lucro < maxLucro * 0.3) corBarra = "#ff5252";
+                else if (item.lucro < maxLucro * 0.7) corBarra = "#ffd740";
+
+                const margem = item.custo > 0 ? ((item.lucro / item.custo) * 100).toFixed(0) : 0;
+
+                container.innerHTML += `
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-bar" style="height: ${Math.max(5, altura)}%; background: ${corBarra};">
+                            <span class="chart-value" style="color: ${corBarra}">${item.lucro > 0 ? item.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : ''}</span>
+                        </div>
+                        <span class="chart-label">${item.label}<br>${item.sub}</span>
+                    </div>`;
+
+                details.innerHTML += `
+                    <div class="card" style="margin: 5px 0; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <div><strong>${item.label} (${item.sub})</strong></div>
+                        <div style="text-align: right;">
+                            <span style="color: var(--primary); font-weight: bold;">R$ ${item.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span><br>
+                            <small style="color: var(--text-light)">Margem: ${margem}%</small>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function removerVenda(id) { if(confirm("Excluir?")) { db.vendas = db.vendas.filter(v => v.id !== id); salvarDB(); renderRelatorio(); atualizarHome(); carregarAnosGrafico(); } }
         function toggleView(id, btn) { const input = document.getElementById(id); if (input.type === "password") { input.type = "text"; btn.classList.replace('fa-eye', 'fa-eye-slash'); } else { input.type = "password"; btn.classList.replace('fa-eye-slash', 'fa-eye'); } }
         function trocarSenha() { const a = document.getElementById('s-atual').value; const n = document.getElementById('s-nova').value; if(a === db.user.password && n.length === 6) { db.user.password = n; salvarDB(); alert("OK!"); } else { alert("Erro!"); } }
         function previewImagem(input) { const reader = new FileReader(); reader.onload = e => { base64Img = e.target.result; document.getElementById('p-preview').src = base64Img; document.getElementById('p-preview').classList.remove('hidden'); document.getElementById('icon-cam').classList.add('hidden'); }; reader.readAsDataURL(input.files[0]); }
