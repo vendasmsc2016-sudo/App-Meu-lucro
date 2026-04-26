@@ -73,7 +73,6 @@
         .search-results { background: var(--card-bg); border-radius: 8px; max-height: 200px; overflow-y: auto; position: absolute; width: 100%; z-index: 50; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .search-item { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
         
-        /* Estilo para o botão de balança */
         .btn-balanca { background: var(--primary); color: white; border: none; border-radius: 8px; width: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 18px; height: 48px; }
     </style>
 </head>
@@ -152,9 +151,9 @@
             <div id="lista-estoque" style="padding: 10px;"></div>
         </div>
 
-        <div id="prod-form-screen" class="screen">
+        <div id="prod-form-screen" class="screen" style="overflow-y: auto; height: calc(100vh - 60px);">
             <header><i class="fas fa-arrow-left" onclick="renderEstoque()"></i><strong>Novo Item</strong></header>
-            <div class="card">
+            <div class="card" style="margin-bottom: 80px; padding-bottom: 50px;">
                 <div class="foto-placeholder" onclick="document.getElementById('file-in').click()">
                     <i class="fas fa-camera" id="icon-cam"></i>
                     <img id="p-preview" class="hidden">
@@ -172,7 +171,7 @@
                     <div><label>CUSTO (UN/KG)</label><input type="text" id="p-custo" oninput="mask(this)"></div>
                     <div><label>VENDA (UN/KG)</label><input type="text" id="p-venda" oninput="mask(this)"></div>
                 </div>
-                <button class="btn-main" style="margin-top:15px" onclick="salvarProduto()">Salvar Produto</button>
+                <button class="btn-main" style="margin-top:25px" onclick="salvarProduto()">Salvar Produto</button>
             </div>
         </div>
 
