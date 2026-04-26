@@ -317,10 +317,22 @@
         function carregarAnosGrafico() {
             const selAno = document.getElementById('chart-ano');
             selAno.innerHTML = "";
-            const anosUnicos = [...new Set(db.vendas.map(v => new Date(v.data).getFullYear()))];
-            if(anosUnicos.length === 0) anosUnicos.push(new Date().getFullYear());
-            anosUnicos.sort((a,b) => b-a).forEach(ano => {
-                selAno.innerHTML += `<option value="${ano}">${ano}</option>`;
+            const anoAtual = new Date().getFullYear();
+            
+            let anosExistentes = db.vendas.map(v => new Date(v.data).getFullYear());
+            
+            // Cria lista de anos de 2024 até 2050
+            let listaFutura = [];
+            for (let i = 2024; i <= 2050; i++) {
+                listaFutura.push(i);
+            }
+            
+            let listaAnos = new Set([...anosExistentes, ...listaFutura]);
+            let anosFinal = Array.from(listaAnos).sort((a,b) => b-a);
+            
+            anosFinal.forEach(ano => {
+                const selected = ano === anoAtual ? "selected" : "";
+                selAno.innerHTML += `<option value="${ano}" ${selected}>${ano}</option>`;
             });
         }
 
@@ -455,7 +467,7 @@
             const totalFinal = Math.max(0, (prodSel.venda * q) + a - d);
             const custoTotal = prodSel.custo * q;
             db.vendas.push({ id: Date.now(), nome: prodSel.nome, qtd: q, valor: totalFinal, custo: custoTotal, lucro: totalFinal - custoTotal, data: new Date().toISOString(), unidade: prodSel.unidade || 'un' });
-            salvarDB(); alert("Venda OK!"); showScreen('home-screen'); atualizarHome();
+            salvarDB(); alert("Venda OK!"); showScreen('home-screen'); atualizarHome(); carregarAnosGrafico();
         }
 
         function toggleRelPersonalizado() {
