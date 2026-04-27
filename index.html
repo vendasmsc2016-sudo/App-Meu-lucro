@@ -210,6 +210,42 @@
             <div id="rel-lista" style="padding: 0 15px;"></div>
         </div>
 
+        <div id="ranking-screen" class="screen">
+            <header><strong>Ranking de Produtos</strong></header>
+            <div class="card">
+                <div class="input-group">
+                    <label>FILTRO PERÍODO</label>
+                    <select id="rank-periodo" onchange="toggleRankPersonalizado()">
+                        <option value="todos">Todo o período</option>
+                        <option value="hoje">Hoje</option>
+                        <option value="7dias">Últimos 7 dias</option>
+                        <option value="mes">Mês Atual</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                </div>
+                <div id="rank-datas-personalizadas" class="hidden" style="margin-top: 10px;">
+                    <div class="row">
+                        <div><label>INÍCIO</label><input type="date" id="rank-data-ini" onchange="renderRanking()"></div>
+                        <div><label>FIM</label><input type="date" id="rank-data-fim" onchange="renderRanking()"></div>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top: 10px;">
+                    <label>ORDENAR POR</label>
+                    <select id="rank-ordem" onchange="renderRanking()">
+                        <option value="qtd-desc">Mais Vendidos (Quantidade)</option>
+                        <option value="lucro-desc">Mais Lucrativos (Lucro Total)</option>
+                        <option value="valor-desc">Maior Faturamento (Valor Total)</option>
+                        <option value="valor-asc">Menor Faturamento</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label>BUSCAR PRODUTO</label>
+                    <input type="text" id="rank-busca" placeholder="Nome do produto..." oninput="renderRanking()">
+                </div>
+            </div>
+            <div id="rank-lista" style="padding: 0 15px;"></div>
+        </div>
+
         <div id="chart-screen" class="screen">
             <header><strong>Gráficos de Lucro</strong></header>
             <div class="card">
@@ -271,6 +307,7 @@
             <div class="nav-item" id="nav-estoque" onclick="renderEstoque()"><i class="fas fa-boxes"></i><br>Estoque</div>
             <div class="nav-item" id="nav-rel" onclick="renderRelatorio()"><i class="fas fa-chart-line"></i><br>Relat.</div>
             <div class="nav-item" id="nav-chart" onclick="renderGraficos()"><i class="fas fa-chart-bar"></i><br>Gráficos</div>
+            <div class="nav-item" id="nav-ranking" onclick="renderRanking()"><i class="fas fa-trophy"></i><br>Ranking</div>
         </nav>
     </div>
 
@@ -321,7 +358,6 @@
             
             let anosExistentes = db.vendas.map(v => new Date(v.data).getFullYear());
             
-            // Cria lista de anos de 2024 até 2050
             let listaFutura = [];
             for (let i = 2024; i <= 2050; i++) {
                 listaFutura.push(i);
@@ -349,6 +385,7 @@
             if(id === 'estoque-screen') document.getElementById('nav-estoque').classList.add('active');
             if(id === 'rel-screen') document.getElementById('nav-rel').classList.add('active');
             if(id === 'chart-screen') document.getElementById('nav-chart').classList.add('active');
+            if(id === 'ranking-screen') document.getElementById('nav-ranking').classList.add('active');
         }
 
         function atualizarHome() {
@@ -514,6 +551,85 @@
             document.getElementById('rel-custo-total').innerText = "R$ " + custoT.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-lucro-total').innerText = "R$ " + lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             document.getElementById('rel-margem-total').innerText = "(" + mMedia + "%)";
+        }
+
+        // LÓGICA DA NOVA ABA DE RANKING
+        function toggleRankPersonalizado() {
+            const m = document.getElementById('rank-periodo').value;
+            const b = document.getElementById('rank-datas-personalizadas');
+            if(m === 'personalizado') b.classList.remove('hidden'); else b.classList.add('hidden');
+            renderRanking();
+        }
+
+        function renderRanking() {
+            showScreen('ranking-screen');
+            const modo = document.getElementById('rank-periodo').value;
+            const ordem = document.getElementById('rank-ordem').value;
+            const busca = document.getElementById('rank-busca').value.toLowerCase();
+            const lista = document.getElementById('rank-lista');
+            lista.innerHTML = "";
+
+            // 1. Filtrar período e pesquisa
+            const filtrados = db.vendas.filter(v => {
+                const dv = new Date(v.data); const hoje = new Date(); let pData = true;
+                if(modo === 'hoje') pData = dv.toDateString() === hoje.toDateString();
+                else if(modo === '7dias') pData = (hoje - dv) / 86400000 <= 7;
+                else if(modo === 'mes') pData = dv.getMonth() === hoje.getMonth() && dv.getFullYear() === hoje.getFullYear();
+                else if(modo === 'personalizado') {
+                    const i = document.getElementById('rank-data-ini').value; const f = document.getElementById('rank-data-fim').value;
+                    if(i && f) { const dI = new Date(i + "T00:00:00"); const dF = new Date(f + "T23:59:59"); pData = dv >= dI && dv <= dF; }
+                }
+                return pData && v.nome.toLowerCase().includes(busca);
+            });
+
+            // 2. Agrupar os produtos somando quantidades, valores e lucros
+            let agrupados = {};
+            filtrados.forEach(v => {
+                if(!agrupados[v.nome]) {
+                    agrupados[v.nome] = { nome: v.nome, qtd: 0, valor: 0, lucro: 0, unidade: v.unidade || 'un' };
+                }
+                agrupados[v.nome].qtd += v.qtd;
+                agrupados[v.nome].valor += v.valor;
+                agrupados[v.nome].lucro += v.lucro;
+            });
+
+            let arrayRanking = Object.values(agrupados);
+
+            // 3. Ordenar conforme a seleção
+            arrayRanking.sort((a, b) => {
+                if(ordem === 'qtd-desc') return b.qtd - a.qtd;
+                if(ordem === 'lucro-desc') return b.lucro - a.lucro;
+                if(ordem === 'valor-desc') return b.valor - a.valor;
+                if(ordem === 'valor-asc') return a.valor - b.valor;
+                return 0;
+            });
+
+            if(arrayRanking.length === 0) {
+                lista.innerHTML = "<p style='text-align:center; padding:20px; color:var(--text-light);'>Nenhum produto encontrado neste período.</p>";
+                return;
+            }
+
+            // 4. Renderizar a lista na tela
+            arrayRanking.forEach((item, index) => {
+                const qtdTexto = item.unidade === 'kg' ? `${item.qtd.toFixed(3)}kg` : `${item.qtd} un`;
+                let icone = `<span style="display:inline-block; width:25px; font-weight:bold; color:var(--text-light)">${index + 1}º</span>`;
+                if(index === 0) icone = `<i class="fas fa-trophy" style="color:#ffd740; width:25px;"></i>`;
+                else if(index === 1) icone = `<i class="fas fa-medal" style="color:#c0c0c0; width:25px;"></i>`;
+                else if(index === 2) icone = `<i class="fas fa-medal" style="color:#cd7f32; width:25px;"></i>`;
+
+                lista.innerHTML += `
+                <div class="card row" style="margin:8px 0; align-items:center;">
+                    <div style="font-size:16px;">${icone}</div>
+                    <div style="flex:1">
+                        <strong>${item.nome}</strong><br>
+                        <small>Vendidos: ${qtdTexto}</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <strong style="color:var(--text)">R$ ${item.valor.toFixed(2)}</strong><br>
+                        <small style="color:var(--primary)">Lucro: R$ ${item.lucro.toFixed(2)}</small>
+                    </div>
+                </div>`;
+            });
         }
 
         function renderGraficos() {
