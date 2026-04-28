@@ -423,9 +423,6 @@
             showScreen('prod-form-screen');
         }
 
-        // ==========================================
-        // FUNÇÃO SALVAR PRODUTO ATUALIZADA (Evita erros de repetição e falhas)
-        // ==========================================
         function salvarProduto() {
             const n = document.getElementById('p-nome').value;
             const u = document.getElementById('p-unidade').value;
@@ -435,8 +432,6 @@
             if(!n || v <= 0) return alert("Preencha o nome e o valor de venda do produto!");
             
             const pData = { nome: n, unidade: u, custo: c, venda: v, foto: base64Img };
-            
-            // Criamos um backup caso o limite do celular estoure na hora de salvar
             const backupDbStr = JSON.stringify(db);
 
             if(editIdx !== null) {
@@ -449,7 +444,6 @@
                 salvarDB(); 
                 renderEstoque();
             } catch (erro) {
-                // Se der erro, volta para o estado original para não criar produtos "fantasmas"
                 db = JSON.parse(backupDbStr);
                 alert("Erro ao salvar! O espaço do navegador está cheio ou a foto é pesada demais.");
                 console.error(erro);
@@ -731,8 +725,7 @@
         function trocarSenha() { const a = document.getElementById('s-atual').value; const n = document.getElementById('s-nova').value; if(a === db.user.password && n.length === 6) { db.user.password = n; salvarDB(); alert("OK!"); } else { alert("Erro!"); } }
         
         // ==========================================
-        // FUNÇÃO REDIMENSIONAR IMAGEM ATUALIZADA
-        // Comprime a foto pesada para evitar travar o banco de dados
+        // COMPRESSÃO EXTREMA DE IMAGEM ATIVADA
         // ==========================================
         function previewImagem(input) { 
             const file = input.files[0];
@@ -742,34 +735,26 @@
             reader.onload = e => { 
                 const img = new Image();
                 img.onload = () => {
-                    // Cria uma tela invisível (canvas) para reduzir a foto
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 500; // Tamanho máximo ideal para celular
-                    const MAX_HEIGHT = 500;
+                    
+                    // Tamanho reduzido para 150x150 pixels (Tamanho ideal para celular)
+                    const MAX_WIDTH = 150; 
+                    const MAX_HEIGHT = 150;
                     let width = img.width;
                     let height = img.height;
 
-                    // Ajusta a proporção da imagem se for muito grande
                     if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                     } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                     }
 
-                    canvas.width = width;
-                    canvas.height = height;
+                    canvas.width = width; canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Transforma a foto reduzida em formato JPEG com 70% de qualidade
-                    // Isso derruba o peso da imagem quase a zero sem você notar a perda na tela
-                    base64Img = canvas.toDataURL('image/jpeg', 0.7);
+                    // Qualidade baixada para 40% em formato JPEG
+                    base64Img = canvas.toDataURL('image/jpeg', 0.4);
 
                     document.getElementById('p-preview').src = base64Img; 
                     document.getElementById('p-preview').classList.remove('hidden'); 
