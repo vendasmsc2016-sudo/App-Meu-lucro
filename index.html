@@ -423,15 +423,37 @@
             showScreen('prod-form-screen');
         }
 
+        // ==========================================
+        // FUNÇÃO SALVAR PRODUTO ATUALIZADA (Evita erros de repetição e falhas)
+        // ==========================================
         function salvarProduto() {
             const n = document.getElementById('p-nome').value;
             const u = document.getElementById('p-unidade').value;
             const c = conv(document.getElementById('p-custo').value);
             const v = conv(document.getElementById('p-venda').value);
-            if(!n || v <= 0) return alert("Preencha!");
+            
+            if(!n || v <= 0) return alert("Preencha o nome e o valor de venda do produto!");
+            
             const pData = { nome: n, unidade: u, custo: c, venda: v, foto: base64Img };
-            if(editIdx !== null) db.produtos[editIdx] = pData; else db.produtos.push(pData);
-            salvarDB(); renderEstoque();
+            
+            // Criamos um backup caso o limite do celular estoure na hora de salvar
+            const backupDbStr = JSON.stringify(db);
+
+            if(editIdx !== null) {
+                db.produtos[editIdx] = pData;
+            } else {
+                db.produtos.push(pData);
+            }
+            
+            try {
+                salvarDB(); 
+                renderEstoque();
+            } catch (erro) {
+                // Se der erro, volta para o estado original para não criar produtos "fantasmas"
+                db = JSON.parse(backupDbStr);
+                alert("Erro ao salvar! O espaço do navegador está cheio ou a foto é pesada demais.");
+                console.error(erro);
+            }
         }
 
         function editarProd(i) {
@@ -553,7 +575,6 @@
             document.getElementById('rel-margem-total').innerText = "(" + mMedia + "%)";
         }
 
-        // LÓGICA DA NOVA ABA DE RANKING
         function toggleRankPersonalizado() {
             const m = document.getElementById('rank-periodo').value;
             const b = document.getElementById('rank-datas-personalizadas');
@@ -569,7 +590,6 @@
             const lista = document.getElementById('rank-lista');
             lista.innerHTML = "";
 
-            // 1. Filtrar período e pesquisa
             const filtrados = db.vendas.filter(v => {
                 const dv = new Date(v.data); const hoje = new Date(); let pData = true;
                 if(modo === 'hoje') pData = dv.toDateString() === hoje.toDateString();
@@ -582,7 +602,6 @@
                 return pData && v.nome.toLowerCase().includes(busca);
             });
 
-            // 2. Agrupar os produtos somando quantidades, valores e lucros
             let agrupados = {};
             filtrados.forEach(v => {
                 if(!agrupados[v.nome]) {
@@ -595,7 +614,6 @@
 
             let arrayRanking = Object.values(agrupados);
 
-            // 3. Ordenar conforme a seleção
             arrayRanking.sort((a, b) => {
                 if(ordem === 'qtd-desc') return b.qtd - a.qtd;
                 if(ordem === 'lucro-desc') return b.lucro - a.lucro;
@@ -609,7 +627,6 @@
                 return;
             }
 
-            // 4. Renderizar a lista na tela
             arrayRanking.forEach((item, index) => {
                 const qtdTexto = item.unidade === 'kg' ? `${item.qtd.toFixed(3)}kg` : `${item.qtd} un`;
                 let icone = `<span style="display:inline-block; width:25px; font-weight:bold; color:var(--text-light)">${index + 1}º</span>`;
@@ -712,7 +729,57 @@
         function removerVenda(id) { if(confirm("Excluir?")) { db.vendas = db.vendas.filter(v => v.id !== id); salvarDB(); renderRelatorio(); atualizarHome(); carregarAnosGrafico(); } }
         function toggleView(id, btn) { const input = document.getElementById(id); if (input.type === "password") { input.type = "text"; btn.classList.replace('fa-eye', 'fa-eye-slash'); } else { input.type = "password"; btn.classList.replace('fa-eye-slash', 'fa-eye'); } }
         function trocarSenha() { const a = document.getElementById('s-atual').value; const n = document.getElementById('s-nova').value; if(a === db.user.password && n.length === 6) { db.user.password = n; salvarDB(); alert("OK!"); } else { alert("Erro!"); } }
-        function previewImagem(input) { const reader = new FileReader(); reader.onload = e => { base64Img = e.target.result; document.getElementById('p-preview').src = base64Img; document.getElementById('p-preview').classList.remove('hidden'); document.getElementById('icon-cam').classList.add('hidden'); }; reader.readAsDataURL(input.files[0]); }
+        
+        // ==========================================
+        // FUNÇÃO REDIMENSIONAR IMAGEM ATUALIZADA
+        // Comprime a foto pesada para evitar travar o banco de dados
+        // ==========================================
+        function previewImagem(input) { 
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader(); 
+            reader.onload = e => { 
+                const img = new Image();
+                img.onload = () => {
+                    // Cria uma tela invisível (canvas) para reduzir a foto
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 500; // Tamanho máximo ideal para celular
+                    const MAX_HEIGHT = 500;
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Ajusta a proporção da imagem se for muito grande
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Transforma a foto reduzida em formato JPEG com 70% de qualidade
+                    // Isso derruba o peso da imagem quase a zero sem você notar a perda na tela
+                    base64Img = canvas.toDataURL('image/jpeg', 0.7);
+
+                    document.getElementById('p-preview').src = base64Img; 
+                    document.getElementById('p-preview').classList.remove('hidden'); 
+                    document.getElementById('icon-cam').classList.add('hidden'); 
+                };
+                img.src = e.target.result;
+            }; 
+            reader.readAsDataURL(file); 
+        }
+
         function setTema(t) { db.theme = t; salvarDB(); aplicarLayout(); }
         function toggleDark() { db.dark = !db.dark; salvarDB(); aplicarLayout(); }
         function aplicarLayout() { document.body.className = db.theme; db.dark ? document.body.classList.add('dark-mode') : document.body.classList.remove('dark-mode'); }
