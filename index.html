@@ -141,6 +141,12 @@
                     <div><label>ACRÉSCIMO</label><input type="text" id="v-ajuste" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
                     <div><label>DESCONTO</label><input type="text" id="v-desconto" placeholder="0,00" oninput="mask(this); recalcularVenda()"></div>
                 </div>
+                
+                <!-- NOVO CAMPO DE DATA DA VENDA AQUI -->
+                <div class="row" style="margin-top:10px">
+                    <div style="flex: 1;"><label>DATA E HORA DA VENDA</label><input type="datetime-local" id="v-data"></div>
+                </div>
+
                 <div id="v-stats-lucro" class="hidden" style="text-align:center; padding:10px; font-size:13px; color:var(--primary)">
                     <div id="v-lucro-real" style="font-weight: bold;">Lucro: R$ 0,00</div>
                     <div id="v-lucro-perc" style="font-weight: bold;">Margem: 0%</div>
@@ -469,7 +475,14 @@
             document.getElementById('v-qtd').value = 1; document.getElementById('label-qtd').innerText = "QUANTIDADE";
             document.getElementById('v-ajuste').value = ""; document.getElementById('v-desconto').value = "";
             document.getElementById('v-total-txt').innerText = "R$ 0,00"; document.getElementById('v-busca').value = "";
-            document.getElementById('v-stats-lucro').classList.add('hidden'); showScreen('venda-screen');
+            document.getElementById('v-stats-lucro').classList.add('hidden'); 
+
+            // Preenche o campo de data com o momento atual (ajustado para fuso horário local)
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('v-data').value = now.toISOString().slice(0, 16);
+
+            showScreen('venda-screen');
         }
 
         function filtrarItensVenda(t) {
@@ -519,7 +532,12 @@
             const d = conv(document.getElementById('v-desconto').value);
             const totalFinal = Math.max(0, (prodSel.venda * q) + a - d);
             const custoTotal = prodSel.custo * q;
-            db.vendas.push({ id: Date.now(), nome: prodSel.nome, qtd: q, valor: totalFinal, custo: custoTotal, lucro: totalFinal - custoTotal, data: new Date().toISOString(), unidade: prodSel.unidade || 'un' });
+
+            // Pega a data e hora selecionadas no input
+            const dataSelecionada = document.getElementById('v-data').value;
+            const dataFinal = dataSelecionada ? new Date(dataSelecionada).toISOString() : new Date().toISOString();
+
+            db.vendas.push({ id: Date.now(), nome: prodSel.nome, qtd: q, valor: totalFinal, custo: custoTotal, lucro: totalFinal - custoTotal, data: dataFinal, unidade: prodSel.unidade || 'un' });
             salvarDB(); alert("Venda OK!"); showScreen('home-screen'); atualizarHome(); carregarAnosGrafico();
         }
 
